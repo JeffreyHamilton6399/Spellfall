@@ -7,6 +7,7 @@ interface LobbyEntry {
   phase: string;
   roundSeconds: number;
   abilitiesEnabled: boolean;
+  listedPublicly?: boolean;
   lastSeen: number;
 }
 
@@ -30,6 +31,7 @@ export default class RegistryParty implements Party.Server {
         phase?: string;
         roundSeconds?: number;
         abilitiesEnabled?: boolean;
+        listedPublicly?: boolean;
       } = {};
       try {
         body = await req.json();
@@ -51,6 +53,7 @@ export default class RegistryParty implements Party.Server {
           phase: body.phase ?? existing?.phase ?? "lobby",
           roundSeconds: body.roundSeconds ?? existing?.roundSeconds ?? 30,
           abilitiesEnabled: body.abilitiesEnabled ?? existing?.abilitiesEnabled ?? true,
+          listedPublicly: body.listedPublicly ?? existing?.listedPublicly,
           lastSeen: Date.now(),
         });
         return new Response("OK");

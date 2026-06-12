@@ -111,7 +111,8 @@ export type ServerMsg =
 export type ConfigPatch = Partial<
   Pick<import("@/engine/types").LobbyConfig,
     "botBackfill" | "maxPlayers" | "roundSeconds" |
-    "suddenDeathRoundSeconds" | "suddenDeathThreshold" | "abilitiesEnabled"
+    "suddenDeathRoundSeconds" | "suddenDeathThreshold" | "abilitiesEnabled" |
+    "listedPublicly"
   >
 >;
 

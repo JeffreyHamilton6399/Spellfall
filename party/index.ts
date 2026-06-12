@@ -269,7 +269,21 @@ export default class SpellfallParty implements Party.Server {
         if (typeof patch.roundSeconds === "number") safePatch.roundSeconds = Math.max(10, Math.min(60, patch.roundSeconds));
         if (typeof patch.suddenDeathRoundSeconds === "number") safePatch.suddenDeathRoundSeconds = Math.max(5, Math.min(30, patch.suddenDeathRoundSeconds));
         if (typeof patch.suddenDeathThreshold === "number") safePatch.suddenDeathThreshold = Math.max(2, Math.min(10, patch.suddenDeathThreshold));
+
+        const prevListed = state.config.listedPublicly ?? false;
+        if (typeof patch.listedPublicly === "boolean") safePatch.listedPublicly = patch.listedPublicly;
+
         this.engine.patchConfig(safePatch);
+
+        // Handle browse-list visibility change immediately
+        if (typeof safePatch.listedPublicly === "boolean" && safePatch.listedPublicly !== prevListed) {
+          if (safePatch.listedPublicly) {
+            this.pingRegistry(); // register in browse list
+          } else {
+            this.pingRegistryRemove(); // remove from browse list
+          }
+        }
+
         this.broadcastLobbyState();
         break;
       }
@@ -710,7 +724,8 @@ export default class SpellfallParty implements Party.Server {
 
   async pingRegistryRemove() {
     const state = this.engine.getState();
-    if (state.config.mode !== "public") return;
+    // Only rooms that are actually in the registry need to be removed
+    if (state.config.mode !== "public" && !state.config.listedPublicly) return;
     const payload = JSON.stringify({ action: "REMOVE", lobbyId: this.room.id });
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -729,7 +744,8 @@ export default class SpellfallParty implements Party.Server {
 
   async pingRegistry() {
     const state = this.engine.getState();
-    if (state.config.mode !== "public") return;
+    // Ping registry for auto-public rooms AND for private rooms the host listed publicly
+    if (state.config.mode !== "public" && !state.config.listedPublicly) return;
     const humanCount = state.playerIds.filter((id) => state.players[id].kind === "human").length;
     const payload = JSON.stringify({
       action: "UPDATE",
@@ -739,6 +755,7 @@ export default class SpellfallParty implements Party.Server {
       phase: state.phase,
       roundSeconds: state.config.roundSeconds,
       abilitiesEnabled: state.config.abilitiesEnabled,
+      listedPublicly: state.config.listedPublicly,
     });
     try {
       // Production: use party-to-party binding (Cloudflare Workers).

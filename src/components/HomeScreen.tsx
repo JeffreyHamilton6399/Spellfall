@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, BarChart2, Swords, ChevronRight, Globe } from "lucide-react";
+import { Settings, BarChart2, ChevronRight, Zap, Globe, Lock, Hash, Swords } from "lucide-react";
 import { unlock } from "@/lib/audio";
 import SettingsModal from "./SettingsModal";
 import StatsModal from "./StatsModal";
@@ -42,14 +42,14 @@ export default function HomeScreen({ initialName }: Props) {
   const nameRef = useRef<HTMLInputElement>(null);
   const joinRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => { if (!nameSet) nameRef.current?.focus(); }, [nameSet]);
+  useEffect(() => { if (showJoin) joinRef.current?.focus(); }, [showJoin]);
+
   useEffect(() => {
     if (typeof window !== "undefined" && !localStorage.getItem(TOS_KEY)) {
       setShowTos(true);
     }
   }, []);
-
-  useEffect(() => { if (!nameSet) nameRef.current?.focus(); }, [nameSet]);
-  useEffect(() => { if (showJoin) joinRef.current?.focus(); }, [showJoin]);
 
   const saveName = () => {
     const n = name.replace(/[^a-zA-Z0-9_\s\-]/g, "").trim().slice(0, 20);
@@ -99,36 +99,25 @@ export default function HomeScreen({ initialName }: Props) {
   /* ── Main menu ─────────────────────────────────────────────────────── */
   return (
     <>
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-8 px-4 relative">
+      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-6 px-4 relative">
+
         {/* Top-right controls */}
         <div className="absolute top-4 right-4 flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-9 h-9 p-0"
-            onClick={() => setShowStats(true)}
-            aria-label="Stats"
-          >
+          <Button variant="ghost" size="sm" className="w-9 h-9 p-0" onClick={() => setShowStats(true)} aria-label="Stats">
             <BarChart2 size={18} />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-9 h-9 p-0"
-            onClick={() => setShowSettings(true)}
-            aria-label="Settings"
-          >
+          <Button variant="ghost" size="sm" className="w-9 h-9 p-0" onClick={() => setShowSettings(true)} aria-label="Settings">
             <Settings size={18} />
           </Button>
         </div>
 
-        {/* Logo */}
+        {/* Logo + greeting */}
         <div className="text-center">
           <h1 className="font-display font-black text-7xl tracking-wide text-white leading-none">
             SPELL<span className="text-emerald-400">FALL</span>
           </h1>
           <p className="mt-2 text-ink-3 text-sm">
-            Welcome back,{" "}
+            Playing as{" "}
             <button
               onClick={() => setNameSet(false)}
               className="text-ink-2 hover:text-ink transition-colors underline decoration-rim-hi underline-offset-2"
@@ -138,99 +127,105 @@ export default function HomeScreen({ initialName }: Props) {
           </p>
         </div>
 
-        {/* Mode buttons */}
-        <div className="flex flex-col gap-2.5 w-full max-w-xs">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            displayFont
-            className="text-2xl py-4 h-auto"
+        {/* ── Action cards ─────────────────────────────────────────────── */}
+        <div className="w-full max-w-xs flex flex-col gap-2">
+
+          {/* Quick Play */}
+          <MenuCard
+            icon={<Zap size={18} className="text-emerald-400" />}
+            label="Quick Play"
+            description="Jump into the next public match"
+            accent
             onClick={() => go("/play")}
-          >
-            Quick Play
-          </Button>
+          />
 
-          <Button
-            variant="secondary"
-            size="lg"
-            fullWidth
+          {/* Browse Rooms */}
+          <MenuCard
+            icon={<Globe size={18} className="text-sky-400" />}
+            label="Browse Rooms"
+            description="Pick an open public lobby"
+            onClick={() => go("/browse")}
+          />
+
+          {/* Create Room */}
+          <MenuCard
+            icon={<Lock size={18} className="text-amber-400" />}
+            label="Create Room"
+            description="Host a private game for friends"
             onClick={() => go(`/play/${generateRoomCode()}`)}
-          >
-            Create Private Room
-          </Button>
+          />
 
+          {/* Join with Code — expands inline */}
           {!showJoin ? (
-            <Button
-              variant="ghost"
-              size="md"
-              fullWidth
+            <MenuCard
+              icon={<Hash size={18} className="text-violet-400" />}
+              label="Join with Code"
+              description="Enter a SPELL-XXXX invite code"
               onClick={() => setShowJoin(true)}
-            >
-              Join with Code
-            </Button>
+            />
           ) : (
-            <div className="flex gap-2">
-              {/* SPELL- is cosmetic; players type only the 4-char code */}
-              <div className="flex-1 flex items-center bg-arena-800 border border-rim focus-within:border-rim-hi rounded-xl overflow-hidden transition-colors">
-                <span className="pl-4 pr-0.5 text-ink-4 font-mono text-sm select-none pointer-events-none">
-                  SPELL-
-                </span>
-                <input
-                  ref={joinRef}
-                  value={joinCode}
-                  onChange={(e) => {
-                    const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-                    setJoinCode(v.slice(0, 4));
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const raw = e.clipboardData.getData("text").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                    // Strip SPELL prefix if pasted in full
-                    const stripped = raw.startsWith("SPELL") ? raw.slice(5) : raw;
-                    setJoinCode(stripped.slice(0, 4));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && joinCode.length >= 2) go(`/play/${joinCode}`);
-                    if (e.key === "Escape") setShowJoin(false);
-                  }}
-                  placeholder="XXXX"
-                  maxLength={4}
-                  className="flex-1 bg-transparent py-3 pr-4 text-ink placeholder-ink-4 font-mono text-base outline-none min-w-0"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+            <div className="bg-arena-900 border border-rim-hi rounded-2xl px-4 py-3.5 flex flex-col gap-3">
+              <div className="flex items-center gap-2.5">
+                <Hash size={18} className="text-violet-400 flex-shrink-0" />
+                <span className="text-sm font-semibold text-ink">Join with Code</span>
               </div>
-              <Button
-                variant="primary"
-                size="md"
-                disabled={joinCode.length < 2}
-                onClick={() => { if (joinCode) go(`/play/${joinCode}`); }}
-              >
-                Join
-              </Button>
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center bg-arena-800 border border-rim focus-within:border-rim-hi rounded-xl overflow-hidden transition-colors">
+                  <span className="pl-3 pr-0.5 text-ink-4 font-mono text-xs select-none pointer-events-none">
+                    SPELL-
+                  </span>
+                  <input
+                    ref={joinRef}
+                    value={joinCode}
+                    onChange={(e) => {
+                      const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      setJoinCode(v.slice(0, 4));
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const raw = e.clipboardData.getData("text").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      const stripped = raw.startsWith("SPELL") ? raw.slice(5) : raw;
+                      setJoinCode(stripped.slice(0, 4));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && joinCode.length >= 2) go(`/play/${joinCode}`);
+                      if (e.key === "Escape") { setShowJoin(false); setJoinCode(""); }
+                    }}
+                    placeholder="XXXX"
+                    maxLength={4}
+                    className="flex-1 bg-transparent py-2.5 pr-3 text-ink placeholder-ink-4 font-mono text-sm outline-none min-w-0"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={joinCode.length < 2}
+                  onClick={() => { if (joinCode) go(`/play/${joinCode}`); }}
+                >
+                  Join
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setShowJoin(false); setJoinCode(""); }}
+                >
+                  ✕
+                </Button>
+              </div>
             </div>
           )}
 
-          <div className="border-t border-rim pt-2 flex flex-col gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              fullWidth
-              icon={<Globe size={14} />}
-              onClick={() => go("/browse")}
-            >
-              Browse Public Rooms
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              fullWidth
-              icon={<Swords size={14} />}
+          {/* Practice — secondary, below divider */}
+          <div className="border-t border-rim/50 pt-2 mt-1">
+            <button
               onClick={() => go("/practice")}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-ink-3 hover:text-ink-2 hover:bg-arena-900 transition-colors"
             >
-              Practice vs Bots
-            </Button>
+              <Swords size={15} className="flex-shrink-0" />
+              <span className="text-sm font-medium">Practice vs Bots</span>
+            </button>
           </div>
         </div>
 
@@ -271,5 +266,47 @@ export default function HomeScreen({ initialName }: Props) {
         </div>
       )}
     </>
+  );
+}
+
+/* ── Menu card component ───────────────────────────────────────────────────── */
+function MenuCard({
+  icon,
+  label,
+  description,
+  accent = false,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  accent?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl border text-left transition-all group
+        ${accent
+          ? "bg-emerald-900/20 border-emerald-600/50 hover:border-emerald-500 hover:bg-emerald-900/30"
+          : "bg-arena-900 border-rim hover:border-rim-hi hover:bg-arena-800"
+        }`}
+    >
+      <span className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-arena-800/80">
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className={`text-sm font-bold leading-tight ${accent ? "text-emerald-200" : "text-ink"}`}>
+          {label}
+        </div>
+        <div className="text-xs text-ink-4 mt-0.5 truncate">{description}</div>
+      </div>
+      <ChevronRight
+        size={16}
+        className={`flex-shrink-0 transition-transform group-hover:translate-x-0.5 ${
+          accent ? "text-emerald-500" : "text-ink-4"
+        }`}
+      />
+    </button>
   );
 }

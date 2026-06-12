@@ -8,6 +8,7 @@ export interface LobbyConfig {
   suddenDeathRoundSeconds: number;
   suddenDeathThreshold: number;
   abilitiesEnabled: boolean;
+  listedPublicly?: boolean; // private rooms can opt into the browse list
 }
 
 export type PlayerKind = "human" | "bot";

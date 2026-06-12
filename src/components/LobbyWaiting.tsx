@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Check, ChevronDown, ChevronUp, Bot, Timer, Swords, Zap, Crown, X, LogOut } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, Bot, Timer, Swords, Zap, Crown, X, LogOut, Globe } from "lucide-react";
 import type { LobbyPlayer } from "@/party/protocol";
 import type { ConfigPatch } from "@/party/protocol";
 import type { LobbyConfig } from "@/engine/types";
@@ -237,6 +237,20 @@ export default function LobbyWaiting({
 
         {showSettings && (
           <div className="border-t border-rim px-4 py-4 flex flex-col gap-4">
+
+            {/* Visibility toggle — private rooms can opt into the browse list */}
+            {config.mode === "private" && isHost && (
+              <ToggleRow
+                icon={<Globe size={14} />}
+                label="List in Browse"
+                description="Let anyone discover and join this room"
+                checked={config.listedPublicly ?? false}
+                onChange={(v) => patch({ listedPublicly: v })}
+              />
+            )}
+            {config.mode === "private" && !isHost && (config.listedPublicly ?? false) && (
+              <ReadRow icon={<Globe size={14} />} label="Visibility" value="Listed publicly" />
+            )}
 
             {isHost ? (
               <ToggleRow

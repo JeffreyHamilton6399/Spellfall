@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, KeyboardEvent } from "react";
 import type { RoundState } from "@/engine/types";
 import { canMakeWord } from "@/engine/dictionary";
 import { getDictionary } from "@/engine/dictionary";
@@ -38,6 +38,22 @@ export default function WordInput({
 
   const fullRack = [...round.letters, ...privateLetters];
 
+  // Track which rack position is consumed by the current typed word.
+  // Algorithm: for each letter in the input, greedily consume a matching rack tile.
+  // A tile is "used" if its slot has been claimed by the input.
+  const tileConsumed = useMemo<boolean[]>(() => {
+    const needed: Record<string, number> = {};
+    for (const ch of input.toUpperCase()) {
+      needed[ch] = (needed[ch] ?? 0) + 1;
+    }
+    // Walk the full rack; for each letter, consume one unit of need if available.
+    const seen: Record<string, number> = {};
+    return fullRack.map((letter) => {
+      seen[letter] = (seen[letter] ?? 0) + 1;
+      return seen[letter] <= (needed[letter] ?? 0);
+    });
+  }, [input, fullRack]);
+
   const validate = (word: string): string | null => {
     const w = word.toUpperCase().trim();
     if (w.length < 2) return "Too short";
@@ -56,6 +72,7 @@ export default function WordInput({
     if (err) {
       playWordRejected();
       setFlash("error");
+      setInput(""); // clear immediately so player types fresh
       setTimeout(() => setFlash(null), 500);
       return;
     }
@@ -82,13 +99,14 @@ export default function WordInput({
     setInput(cleaned);
   };
 
-  const tapTile = (letter: string) => {
+  const tapTile = (letter: string, rackIndex: number) => {
+    // Don't let the player tap a tile that's already consumed
+    if (tileConsumed[rackIndex]) return;
     unlock();
     playTilePress();
     setPressedLetter(letter);
     setTimeout(() => setPressedLetter(null), 100);
     setInput((prev) => prev + letter.toLowerCase());
-    // Don't focus on touch devices — would pop up keyboard on every tile tap
     const isTouch = typeof window !== "undefined" &&
       window.matchMedia("(hover: none) and (pointer: coarse)").matches;
     if (!isTouch) inputRef.current?.focus();
@@ -99,16 +117,20 @@ export default function WordInput({
       {/* Letter rack */}
       <div className="flex gap-1.5 flex-wrap justify-center" style={{ perspective: "400px" }}>
         {round.letters.map((l, i) => {
-          const isPressed = pressedLetter === l;
+          const consumed = tileConsumed[i];
+          const isPressed = pressedLetter === l && !consumed;
           return (
             <button
               key={i}
-              onClick={() => tapTile(l)}
+              onClick={() => tapTile(l, i)}
+              disabled={consumed}
               className={`w-11 h-11 flex items-center justify-center rounded-xl font-mono font-black text-xl select-none
-                border shadow-sm transition-all duration-75 cursor-pointer touch-manipulation
-                ${isPressed
-                  ? "scale-90 bg-emerald-500/30 border-emerald-400 text-emerald-200"
-                  : "bg-arena-800 border-rim-hi text-white hover:bg-arena-700 active:scale-90"
+                border shadow-sm transition-all duration-100 touch-manipulation
+                ${consumed
+                  ? "bg-arena-900 border-rim/40 text-ink-4 opacity-40 cursor-default"
+                  : isPressed
+                  ? "scale-90 bg-emerald-500/30 border-emerald-400 text-emerald-200 cursor-pointer"
+                  : "bg-arena-800 border-rim-hi text-white hover:bg-arena-700 active:scale-90 cursor-pointer"
                 }`}
               style={{ animationDelay: `${i * 40}ms`, animationFillMode: "both" }}
             >
@@ -116,18 +138,26 @@ export default function WordInput({
             </button>
           );
         })}
-        {privateLetters.map((l, i) => (
-          <button
-            key={`priv-${i}`}
-            onClick={() => tapTile(l)}
-            title="Private letter (Snipe)"
-            className={`w-11 h-11 flex items-center justify-center rounded-xl font-mono font-black text-xl select-none
-              border shadow-sm transition-all duration-75 cursor-pointer touch-manipulation
-              bg-amber-500/20 border-amber-400/60 text-amber-300 hover:bg-amber-500/30 active:scale-90`}
-          >
-            {l}
-          </button>
-        ))}
+        {privateLetters.map((l, i) => {
+          const rackIdx = round.letters.length + i;
+          const consumed = tileConsumed[rackIdx];
+          return (
+            <button
+              key={`priv-${i}`}
+              onClick={() => tapTile(l, rackIdx)}
+              disabled={consumed}
+              title="Private letter (Snipe)"
+              className={`w-11 h-11 flex items-center justify-center rounded-xl font-mono font-black text-xl select-none
+                border shadow-sm transition-all duration-100 cursor-pointer touch-manipulation
+                ${consumed
+                  ? "bg-amber-900/10 border-amber-400/20 text-amber-400/30 opacity-40 cursor-default"
+                  : "bg-amber-500/20 border-amber-400/60 text-amber-300 hover:bg-amber-500/30 active:scale-90"
+                }`}
+            >
+              {l}
+            </button>
+          );
+        })}
       </div>
 
       {/* Input row */}

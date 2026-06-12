@@ -109,6 +109,17 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
     window.location.assign("/");
   }, [disconnect]);
 
+  // Remount LobbyWaiting on each new match so all local state (ability selection,
+  // confirmLeave, etc.) starts fresh.
+  const [lobbyKey, setLobbyKey] = useState(0);
+  const prevPhaseStatusRef = useRef<string>(phase.status);
+  useEffect(() => {
+    if (prevPhaseStatusRef.current === "in_game" && phase.status === "lobby") {
+      setLobbyKey((k) => k + 1);
+    }
+    prevPhaseStatusRef.current = phase.status;
+  }, [phase.status]);
+
   const humanId         = yourPlayerId ?? "";
   const lastRoundRef    = useRef(-1);
 
@@ -145,6 +156,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
 
       {phase.status === "lobby" && (
         <LobbyWaiting
+          key={lobbyKey}
           players={phase.players}
           roomCode={phase.roomCode}
           config={phase.config}

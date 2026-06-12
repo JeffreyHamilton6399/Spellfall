@@ -33,11 +33,16 @@ export async function GET() {
       phase: string;
       roundSeconds: number;
       abilitiesEnabled: boolean;
+      listedPublicly?: boolean;
     }>;
 
-    // Only show open public lobbies with room
+    // Show open public rooms AND private rooms the host listed publicly
     const open: BrowseLobby[] = all
-      .filter((l) => l.id.startsWith("pub_") && l.phase === "lobby" && l.playerCount < l.maxPlayers)
+      .filter((l) =>
+        (l.id.startsWith("pub_") || l.listedPublicly) &&
+        l.phase === "lobby" &&
+        l.playerCount < l.maxPlayers
+      )
       .map((l) => ({
         id: l.id,
         playerCount: l.playerCount,

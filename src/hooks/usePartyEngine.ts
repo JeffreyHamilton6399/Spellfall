@@ -174,6 +174,8 @@ export function usePartyEngine(
             hostId: msg.hostId,
           });
           setGameState(null);
+          // Reset per-match word tracking so rematches start clean
+          myWordsPlayedRef.current = [];
           break;
         }
         case "SNAPSHOT": {

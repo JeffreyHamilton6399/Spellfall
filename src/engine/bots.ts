@@ -47,31 +47,31 @@ const BOT_POOL: BotTemplate[] = [
 const TIER_CONFIGS: Record<BotTier, BotConfig> = {
   novice: {
     tier: "novice",
-    reactionDelayMs: [8000, 17000],
+    reactionDelayMs: [5000, 14000],
     wordLengthBias: "short",
-    vocabFraction: 0.12,
-    wordsPerRound: [0, 2],
+    vocabFraction: 0.25,
+    wordsPerRound: [1, 2],   // guaranteed at least 1 word; previously could play 0
   },
   casual: {
     tier: "casual",
-    reactionDelayMs: [5000, 13000],
-    wordLengthBias: "short",
-    vocabFraction: 0.30,
-    wordsPerRound: [1, 2],
+    reactionDelayMs: [3000, 10000],
+    wordLengthBias: "balanced",   // upgraded from "short" — plays 4-5 letter words
+    vocabFraction: 0.45,
+    wordsPerRound: [1, 3],
   },
   skilled: {
     tier: "skilled",
-    reactionDelayMs: [3000, 9000],
+    reactionDelayMs: [2000, 7000],
     wordLengthBias: "balanced",
-    vocabFraction: 0.60,
-    wordsPerRound: [1, 3],
+    vocabFraction: 0.72,
+    wordsPerRound: [2, 4],
   },
   expert: {
     tier: "expert",
-    reactionDelayMs: [1000, 5000],
+    reactionDelayMs: [800, 4000],
     wordLengthBias: "long",
-    vocabFraction: 0.90,
-    wordsPerRound: [2, 4],
+    vocabFraction: 1.0,          // knows all words; previously 0.90
+    wordsPerRound: [3, 6],       // high output; previously [2, 4]
   },
 };
 
