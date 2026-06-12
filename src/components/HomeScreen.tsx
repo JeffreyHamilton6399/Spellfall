@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, BarChart2, Swords, ChevronRight } from "lucide-react";
+import { Settings, BarChart2, Swords, ChevronRight, Globe } from "lucide-react";
 import { unlock } from "@/lib/audio";
 import SettingsModal from "./SettingsModal";
 import StatsModal from "./StatsModal";
 import Button from "./ui/Button";
+
+const TOS_KEY = "spellfall_terms_v1";
 
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -36,8 +38,15 @@ export default function HomeScreen({ initialName }: Props) {
   const [showJoin, setShowJoin] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats]       = useState(false);
+  const [showTos, setShowTos]           = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const joinRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem(TOS_KEY)) {
+      setShowTos(true);
+    }
+  }, []);
 
   useEffect(() => { if (!nameSet) nameRef.current?.focus(); }, [nameSet]);
   useEffect(() => { if (showJoin) joinRef.current?.focus(); }, [showJoin]);
@@ -203,7 +212,16 @@ export default function HomeScreen({ initialName }: Props) {
             </div>
           )}
 
-          <div className="border-t border-rim pt-2">
+          <div className="border-t border-rim pt-2 flex flex-col gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              fullWidth
+              icon={<Globe size={14} />}
+              onClick={() => go("/browse")}
+            >
+              Browse Public Rooms
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -215,10 +233,43 @@ export default function HomeScreen({ initialName }: Props) {
             </Button>
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4 text-ink-4 text-xs">
+          <a href="/terms"   className="hover:text-ink-3 transition-colors">Terms</a>
+          <a href="/privacy" className="hover:text-ink-3 transition-colors">Privacy</a>
+        </div>
       </div>
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showStats    && <StatsModal    onClose={() => setShowStats(false)}    />}
+
+      {/* First-visit ToS modal */}
+      {showTos && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm bg-arena-900 border border-rim rounded-2xl p-6 flex flex-col gap-4">
+            <h2 className="font-display font-bold text-xl text-white">Welcome to Spellfall</h2>
+            <p className="text-ink-3 text-sm leading-relaxed">
+              By playing, you agree to our{" "}
+              <a href="/terms" target="_blank" className="text-emerald-400 underline">Terms of Service</a>
+              {" "}and{" "}
+              <a href="/privacy" target="_blank" className="text-emerald-400 underline">Privacy Policy</a>.
+              No account required — just pick a name and play.
+            </p>
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              onClick={() => {
+                localStorage.setItem(TOS_KEY, "1");
+                setShowTos(false);
+              }}
+            >
+              Got it — Let&apos;s Play
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

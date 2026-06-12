@@ -92,6 +92,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
     connectionStatus,
     wordCounts,
     clockOffset,
+    hostId,
     submitWord,
     selectAbility,
     useAbility,
@@ -99,6 +100,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
     updateConfig,
     kickPlayer,
     transferHost,
+    rematchVote,
     disconnect,
   } = usePartyEngine(partyId, name, session);
 
@@ -185,7 +187,9 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
               <EndScreen
                 state={gameState}
                 humanId={humanId}
-                onPlayAgain={() => window.location.assign("/")}
+                isHost={hostId === humanId}
+                onPlayAgain={rematchVote}
+                onLeave={() => { disconnect(); window.location.assign("/"); }}
               />
             </ErrorBoundary>
           )}

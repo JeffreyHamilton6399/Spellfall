@@ -84,7 +84,13 @@ export default function GameShell() {
   if (state.phase === "ended") {
     return (
       <ErrorBoundary>
-        <EndScreen state={state} humanId={humanId} onPlayAgain={restartGame} />
+        <EndScreen
+          state={state}
+          humanId={humanId}
+          isHost={true}
+          onPlayAgain={restartGame}
+          onLeave={() => window.location.assign("/")}
+        />
       </ErrorBoundary>
     );
   }

@@ -22,10 +22,27 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const SITE_URL = "https://spellfall.jeffreyhamilton6399.partykit.dev";
+
 export const metadata: Metadata = {
-  title: "Spellfall",
-  description: "Battle royale word game — outlast 19 opponents one word at a time",
-  icons: { icon: "/favicon.ico" },
+  title: "Spellfall — Multiplayer Word Battle Royale",
+  description: "Type fast. Deal damage. Outlast everyone. Spellfall is a free multiplayer word battle-royale where your vocabulary is your weapon.",
+  icons: [
+    { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
+  ],
+  manifest: "/site.webmanifest",
+  openGraph: {
+    type: "website",
+    siteName: "Spellfall",
+    title: "Spellfall — Multiplayer Word Battle Royale",
+    description: "Type fast. Deal damage. Outlast everyone.",
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary",
+    title: "Spellfall — Multiplayer Word Battle Royale",
+    description: "Type fast. Deal damage. Outlast everyone.",
+  },
 };
 
 export const viewport: Viewport = {

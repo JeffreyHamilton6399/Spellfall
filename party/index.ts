@@ -63,6 +63,9 @@ export default class SpellfallParty implements Party.Server {
   countdownTimer: ReturnType<typeof setTimeout> | null = null;
   lobbyCountdownEndsAt: number | null = null;
 
+  // Cache player names so resetToLobby can restore them
+  playerNames = new Map<string, string>();
+
   constructor(readonly room: Party.Room) {
     // pub_ prefix = auto-created public lobby; everything else is a private room
     const isPrivate = !room.id.startsWith("pub_");
@@ -119,10 +122,14 @@ export default class SpellfallParty implements Party.Server {
     }
 
     const playerId = `h_${sessionId.slice(0, 8)}`;
-    if (!this.hostPlayerId) this.hostPlayerId = playerId;
+    // Only private rooms have a host; public rooms are server-managed
+    if (state.config.mode === "private" && !this.hostPlayerId) {
+      this.hostPlayerId = playerId;
+    }
 
     this.sessions.set(conn.id, { playerId, conn, sessionId });
     this.sessionIndex.set(sessionId, conn.id);
+    this.playerNames.set(playerId, name);
 
     this.engine.processEvent({
       type: "PLAYER_JOIN",
@@ -242,6 +249,7 @@ export default class SpellfallParty implements Party.Server {
       }
 
       case "HOST_START": {
+        if (state.config.mode !== "private") break;
         if (session.playerId !== this.hostPlayerId) break;
         if (state.phase !== "lobby") break;
         this.launchGame();
@@ -249,6 +257,7 @@ export default class SpellfallParty implements Party.Server {
       }
 
       case "UPDATE_CONFIG": {
+        if (state.config.mode !== "private") break;
         if (session.playerId !== this.hostPlayerId) break;
         if (state.phase !== "lobby") break;
         const { patch } = msg;
@@ -266,6 +275,7 @@ export default class SpellfallParty implements Party.Server {
       }
 
       case "KICK_PLAYER": {
+        if (state.config.mode !== "private") break;
         if (session.playerId !== this.hostPlayerId) break;
         if (state.phase !== "lobby") break;
         const kickId = msg.targetId;
@@ -291,6 +301,7 @@ export default class SpellfallParty implements Party.Server {
       }
 
       case "TRANSFER_HOST": {
+        if (state.config.mode !== "private") break;
         if (session.playerId !== this.hostPlayerId) break;
         if (state.phase !== "lobby") break;
         const newHostId = msg.targetId;
@@ -301,7 +312,19 @@ export default class SpellfallParty implements Party.Server {
         break;
       }
 
-      case "REMATCH_VOTE": break;
+      case "REMATCH_VOTE": {
+        if (state.phase !== "ended") break;
+        if (state.config.mode === "public") {
+          // Public: any player can trigger rematch immediately
+          this.resetToLobby();
+        } else {
+          // Private: only the host triggers the reset
+          if (session.playerId !== this.hostPlayerId) break;
+          this.resetToLobby();
+        }
+        break;
+      }
+
       case "SET_NAME": break;
     }
   }
@@ -622,6 +645,69 @@ export default class SpellfallParty implements Party.Server {
     };
   }
 
+  // ── Rematch ───────────────────────────────────────────────────────────────
+
+  resetToLobby() {
+    const oldState = this.engine.getState();
+    const config = { ...oldState.config };
+
+    // Preserve host for private rooms
+    const oldHostId = this.hostPlayerId;
+
+    // Fresh engine, same config
+    this.engine = new SpellfallEngine(config, WORD_SET);
+
+    // Re-add all currently connected humans in session order
+    const now = Date.now();
+    for (const session of this.sessions.values()) {
+      const name = this.playerNames.get(session.playerId) ??
+        oldState.players[session.playerId]?.name ?? "Player";
+      this.engine.processEvent({
+        type: "PLAYER_JOIN",
+        playerId: session.playerId,
+        name,
+        kind: "human",
+        bot: null,
+        abilityId: null,
+        timestamp: now,
+      });
+    }
+
+    // Restore host (private rooms keep the same host)
+    if (config.mode === "private") {
+      // If old host is still connected, keep them; otherwise migrate
+      const stillConnected = Array.from(this.sessions.values()).some(
+        (s) => s.playerId === oldHostId
+      );
+      if (stillConnected) {
+        this.hostPlayerId = oldHostId;
+      } else {
+        const first = this.sessions.values().next().value as Session | undefined;
+        this.hostPlayerId = first?.playerId ?? null;
+      }
+    }
+
+    // Reset runtime state
+    this.disconnected.clear();
+    this.scheduledBotRound = -1;
+    this.stopTick();
+    this.startTick();
+
+    if (this.countdownTimer) {
+      clearTimeout(this.countdownTimer);
+      this.countdownTimer = null;
+      this.lobbyCountdownEndsAt = null;
+    }
+
+    // Public rooms: restart auto-countdown
+    if (config.mode === "public") {
+      this.checkAutoCountdown();
+    }
+
+    this.broadcastLobbyState();
+    this.pingRegistry();
+  }
+
   async pingRegistryRemove() {
     const state = this.engine.getState();
     if (state.config.mode !== "public") return;
@@ -649,7 +735,10 @@ export default class SpellfallParty implements Party.Server {
       action: "UPDATE",
       lobbyId: this.room.id,
       playerCount: humanCount,
+      maxPlayers: state.config.maxPlayers,
       phase: state.phase,
+      roundSeconds: state.config.roundSeconds,
+      abilitiesEnabled: state.config.abilitiesEnabled,
     });
     try {
       // Production: use party-to-party binding (Cloudflare Workers).

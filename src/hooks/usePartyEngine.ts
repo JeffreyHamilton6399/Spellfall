@@ -40,6 +40,7 @@ export interface UsePartyEngineResult {
   connectionStatus: ConnectionStatus;
   wordCounts: Record<string, number>;
   clockOffset: number;
+  hostId: string | null;
   submitWord: (word: string) => void;
   selectAbility: (abilityId: string) => void;
   useAbility: (abilityId: string, targetId?: string) => void;
@@ -47,6 +48,7 @@ export interface UsePartyEngineResult {
   updateConfig: (patch: ConfigPatch) => void;
   kickPlayer: (targetId: string) => void;
   transferHost: (targetId: string) => void;
+  rematchVote: () => void;
   disconnect: () => void;
 }
 
@@ -136,7 +138,8 @@ export function usePartyEngine(
   const [selfInfo, setSelfInfo] = useState<SelfInfo>(DEFAULT_SELF);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
-  const [clockOffset, setClockOffset] = useState(0); // serverNow - clientNow at receive time
+  const [clockOffset, setClockOffset] = useState(0);
+  const [hostId, setHostId] = useState<string | null>(null);
 
   const socketRef = useRef<PartySocket | null>(null);
   const myWordsPlayedRef = useRef<string[]>([]);
@@ -161,6 +164,7 @@ export function usePartyEngine(
       switch (msg.type) {
         case "LOBBY_STATE": {
           setYourPlayerId(msg.yourPlayerId);
+          setHostId(msg.hostId);
           setPhase({
             status: "lobby",
             players: msg.players,
@@ -232,6 +236,8 @@ export function usePartyEngine(
     [send]
   );
 
+  const rematchVote = useCallback(() => send({ type: "REMATCH_VOTE" }), [send]);
+
   const disconnect = useCallback(() => {
     socketRef.current?.close();
     socketRef.current = null;
@@ -245,6 +251,7 @@ export function usePartyEngine(
     connectionStatus,
     wordCounts,
     clockOffset,
+    hostId,
     submitWord,
     selectAbility,
     useAbility,
@@ -252,6 +259,7 @@ export function usePartyEngine(
     updateConfig,
     kickPlayer,
     transferHost,
+    rematchVote,
     disconnect,
   };
 }

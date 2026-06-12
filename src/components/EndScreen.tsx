@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trophy, Swords, Star, BarChart2 } from "lucide-react";
+import { Trophy, Swords, Star, BarChart2, LogOut, RotateCcw } from "lucide-react";
 import type { GameState } from "@/engine/types";
 import { recordMatch, type MatchResult } from "@/lib/stats";
 import { playVictory, playDefeat } from "@/lib/audio";
@@ -12,7 +12,9 @@ import Button from "./ui/Button";
 interface Props {
   state: GameState;
   humanId: string;
+  isHost: boolean;
   onPlayAgain: () => void;
+  onLeave: () => void;
 }
 
 function useCountUp(target: number, delay: number = 0, duration: number = 1000): number {
@@ -34,7 +36,7 @@ function useCountUp(target: number, delay: number = 0, duration: number = 1000):
   return value;
 }
 
-export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
+export default function EndScreen({ state, humanId, isHost, onPlayAgain, onLeave }: Props) {
   const { settings } = useSettings();
   const [showStats, setShowStats] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -53,6 +55,15 @@ export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
   const total     = ranked.length;
   const isWinner  = state.winnerId === humanId;
   const topThree  = ranked.slice(0, 3);
+  const isPublic  = state.config.mode === "public";
+
+  // Find who eliminated the human player from kill feed
+  const elimEntry = !isWinner && state.killFeed
+    ? [...state.killFeed].reverse().find(
+        (k) => k.killedId === humanId && k.killerId !== null
+      )
+    : null;
+  const killerName = elimEntry?.killerName ?? null;
 
   const dmgDisplay  = useCountUp(human?.damageDealtTotal ?? 0, 500,  1200);
   const killDisplay = useCountUp(human?.eliminations      ?? 0, 650,  900);
@@ -105,6 +116,11 @@ export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
     : placement <= 10 ? "Solid run"
     : "Keep practising";
 
+  // Determine Play Again affordance:
+  // Public rooms: anyone can rematch immediately
+  // Private rooms: host can restart; non-host waits
+  const canRematch = isPublic || isHost;
+
   return (
     <>
       <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center px-4 py-12">
@@ -142,6 +158,20 @@ export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
             )}
             <p className="text-ink-3 mt-2 text-sm">{subText}</p>
           </div>
+
+          {/* ── Eliminated-by card ─────────────────── */}
+          {!isWinner && killerName && (
+            <div
+              className="w-full bg-rose-950/40 border border-rose-800/40 rounded-xl px-4 py-3 flex items-center gap-3"
+              style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 200ms" }}
+            >
+              <Swords size={14} className="text-rose-400 flex-shrink-0" />
+              <div className="text-sm text-rose-200 flex-1 min-w-0">
+                Eliminated by{" "}
+                <span className="font-semibold text-rose-100">{killerName}</span>
+              </div>
+            </div>
+          )}
 
           {/* ── Stats ─────────────────────────────── */}
           <div
@@ -197,9 +227,15 @@ export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
             className="w-full flex flex-col gap-2"
             style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 550ms" }}
           >
-            <Button variant="primary" size="lg" fullWidth displayFont onClick={onPlayAgain}>
-              Play Again
-            </Button>
+            {canRematch ? (
+              <Button variant="primary" size="lg" fullWidth displayFont icon={<RotateCcw size={16} />} onClick={onPlayAgain}>
+                Play Again
+              </Button>
+            ) : (
+              <div className="text-center text-ink-3 text-sm py-2">
+                Waiting for host to restart…
+              </div>
+            )}
             <Button
               variant="ghost"
               size="md"
@@ -208,6 +244,15 @@ export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
               onClick={() => setShowStats(true)}
             >
               Career stats
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              fullWidth
+              icon={<LogOut size={15} />}
+              onClick={onLeave}
+            >
+              Leave
             </Button>
           </div>
         </div>

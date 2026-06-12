@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Settings } from "lucide-react";
 import type { GameState, StatusEffect } from "@/engine/types";
+import { useSettings } from "@/contexts/SettingsContext";
 import PlayerList from "./PlayerList";
 import WordInput from "./WordInput";
 import RoundTimer from "./RoundTimer";
@@ -37,6 +38,7 @@ export default function Board({
   clockOffset = 0,
 }: Props) {
   const [showSettings, setShowSettings] = useState(false);
+  const { settings } = useSettings();
 
   const { round, phase } = state;
   const human = state.players[humanId];
@@ -65,7 +67,8 @@ export default function Board({
     [state.playerIds, state.players]
   );
 
-  const hasKillFeed = state.killFeed.length > 0 || (state.abilityFeed?.length ?? 0) > 0;
+  const hasKillFeed = settings.showKillFeed &&
+    (state.killFeed.length > 0 || (state.abilityFeed?.length ?? 0) > 0);
 
   return (
     <>
@@ -167,7 +170,7 @@ export default function Board({
                         <div className="flex-1">
                           <HpBar hp={human.hp} />
                         </div>
-                        <DamageNumbers hp={human.hp} />
+                        {settings.showDamageNumbers && <DamageNumbers hp={human.hp} />}
                       </div>
 
                       {/* Energy / ability row */}

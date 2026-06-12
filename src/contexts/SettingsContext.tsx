@@ -18,6 +18,8 @@ export interface Settings {
   colorblindMode: boolean;
   displayName: string;
   theme: Theme;
+  showKillFeed: boolean;
+  showDamageNumbers: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -26,6 +28,8 @@ const DEFAULT_SETTINGS: Settings = {
   colorblindMode: false,
   displayName: "",
   theme: "dark",
+  showKillFeed: true,
+  showDamageNumbers: true,
 };
 
 const SETTINGS_KEY = "spellfall_settings_v1";

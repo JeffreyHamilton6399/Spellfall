@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Volume2, VolumeX, Accessibility, EyeOff, User, Check, Palette } from "lucide-react";
+import { X, Volume2, VolumeX, Accessibility, EyeOff, User, Check, Palette, Gamepad2, Swords, MessageSquare } from "lucide-react";
 import { useSettings, type Theme } from "@/contexts/SettingsContext";
 import Button from "./ui/Button";
 
@@ -176,6 +176,27 @@ export default function SettingsModal({ onClose }: Props) {
               description="Blue / amber / red instead of green / yellow / red"
               checked={settings.colorblindMode}
               onChange={(v) => update({ colorblindMode: v })}
+            />
+          </section>
+
+          <Divider />
+
+          {/* ── Gameplay ─── */}
+          <section className="flex flex-col gap-3">
+            <SectionLabel icon={<Gamepad2 size={11} />}>Gameplay</SectionLabel>
+            <Toggle
+              icon={<MessageSquare size={15} />}
+              label="Kill feed"
+              description="Show elimination events during the game"
+              checked={settings.showKillFeed}
+              onChange={(v) => update({ showKillFeed: v })}
+            />
+            <Toggle
+              icon={<Swords size={15} />}
+              label="Damage numbers"
+              description="Show floating damage indicators"
+              checked={settings.showDamageNumbers}
+              onChange={(v) => update({ showDamageNumbers: v })}
             />
           </section>
 

@@ -3,7 +3,10 @@ import type * as Party from "partykit/server";
 interface LobbyEntry {
   id: string;
   playerCount: number;
+  maxPlayers: number;
   phase: string;
+  roundSeconds: number;
+  abilitiesEnabled: boolean;
   lastSeen: number;
 }
 
@@ -19,7 +22,15 @@ export default class RegistryParty implements Party.Server {
     this.pruneStale();
 
     if (req.method === "POST") {
-      let body: { action?: string; lobbyId?: string; playerCount?: number; phase?: string } = {};
+      let body: {
+        action?: string;
+        lobbyId?: string;
+        playerCount?: number;
+        maxPlayers?: number;
+        phase?: string;
+        roundSeconds?: number;
+        abilitiesEnabled?: boolean;
+      } = {};
       try {
         body = await req.json();
       } catch {
@@ -32,10 +43,14 @@ export default class RegistryParty implements Party.Server {
       }
 
       if (body.action === "UPDATE" && body.lobbyId) {
+        const existing = this.lobbies.get(body.lobbyId);
         this.lobbies.set(body.lobbyId, {
           id: body.lobbyId,
-          playerCount: body.playerCount ?? 0,
-          phase: body.phase ?? "lobby",
+          playerCount: body.playerCount ?? existing?.playerCount ?? 0,
+          maxPlayers: body.maxPlayers ?? existing?.maxPlayers ?? 20,
+          phase: body.phase ?? existing?.phase ?? "lobby",
+          roundSeconds: body.roundSeconds ?? existing?.roundSeconds ?? 30,
+          abilitiesEnabled: body.abilitiesEnabled ?? existing?.abilitiesEnabled ?? true,
           lastSeen: Date.now(),
         });
         return new Response("OK");
@@ -62,7 +77,10 @@ export default class RegistryParty implements Party.Server {
       }
     }
     const id = `pub_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    this.lobbies.set(id, { id, playerCount: 0, phase: "lobby", lastSeen: Date.now() });
+    this.lobbies.set(id, {
+      id, playerCount: 0, maxPlayers: MAX_PLAYERS,
+      phase: "lobby", roundSeconds: 30, abilitiesEnabled: true, lastSeen: Date.now(),
+    });
     return id;
   }
 
