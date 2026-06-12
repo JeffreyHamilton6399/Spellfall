@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated wordlist (rebuilt by npm run dev/build)
+party/wordlist-data.ts

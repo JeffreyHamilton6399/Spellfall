@@ -1,0 +1,72 @@
+export type AbilityTargeting = "none" | "player";
+export type AbilityTrigger = "instant" | "next-word" | "next-round";
+
+export interface AbilityDef {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  targeting: AbilityTargeting;
+  trigger: AbilityTrigger;
+}
+
+export const ABILITIES: Record<string, AbilityDef> = {
+  letter_snipe: {
+    id: "letter_snipe",
+    name: "Letter Snipe",
+    description: "Next round you get a private 8th letter no one else has.",
+    icon: "🎯",
+    targeting: "none",
+    trigger: "next-round",
+  },
+  venom_word: {
+    id: "venom_word",
+    name: "Venom Word",
+    description: "Your next word poisons targets: 5 dmg/round for 3 rounds.",
+    icon: "☠️",
+    targeting: "none",
+    trigger: "next-word",
+  },
+  word_shield: {
+    id: "word_shield",
+    name: "Word Shield",
+    description: "Block all incoming word damage this round.",
+    icon: "🛡️",
+    targeting: "none",
+    trigger: "instant",
+  },
+  lifeleech: {
+    id: "lifeleech",
+    name: "Lifeleech",
+    description: "Your next word heals you for 50% of its total damage.",
+    icon: "🩸",
+    targeting: "none",
+    trigger: "next-word",
+  },
+  scramble: {
+    id: "scramble",
+    name: "Scramble",
+    description: "Immediately reroll the shared rack. Timer continues.",
+    icon: "🌀",
+    targeting: "none",
+    trigger: "instant",
+  },
+  blind: {
+    id: "blind",
+    name: "Blind",
+    description: "Target's rack is hidden for the first 5s of next round.",
+    icon: "🙈",
+    targeting: "player",
+    trigger: "instant",
+  },
+};
+
+export const ABILITY_IDS = Object.keys(ABILITIES);
+
+// Tier-based bot ability assignment
+export const BOT_ABILITY_POOL: Record<string, string[]> = {
+  novice:  ["letter_snipe", "word_shield"],
+  casual:  ["word_shield", "lifeleech"],
+  skilled: ["venom_word", "letter_snipe", "lifeleech"],
+  expert:  ["scramble", "blind", "venom_word"],
+};

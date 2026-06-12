@@ -1,26 +1,100 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ─── Design tokens ───────────────────────────────────────────────────── */
+@theme {
+  /* Font families */
+  --font-display: var(--font-barlow), "Barlow Condensed", ui-sans-serif, system-ui;
+  --font-sans:    var(--font-inter),  ui-sans-serif, system-ui;
+  --font-mono:    var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Arena color scale (navy-tinted darks) */
+  --color-arena-950: #070b12;
+  --color-arena-900: #0d1421;
+  --color-arena-800: #131e30;
+  --color-arena-700: #1a2840;
+  --color-arena-600: #1e3050;
+  --color-arena-500: #2a4266;
+  --color-arena-400: #3d5f8a;
+
+  /* Semantic border colors */
+  --color-rim:    #1e2d45;
+  --color-rim-hi: #2d4261;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Base ────────────────────────────────────────────────────────────── */
+body {
+  background: #070b12;
+  color: #e2e8f0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #2d4261; }
+
+/* ─── Typography helpers ─────────────────────────────────────────────── */
+.font-display { font-family: var(--font-barlow), "Barlow Condensed", ui-sans-serif; }
+
+/* ─── Animations ────────────────────────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%  { transform: translateX(-6px); }
+  40%  { transform: translateX( 6px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX( 4px); }
+}
+.animate-shake { animation: shake 0.35s ease-in-out; }
+
+@keyframes float-up {
+  0%   { opacity: 1;   transform: translateY(0)   scale(1); }
+  100% { opacity: 0;   transform: translateY(-56px) scale(0.8); }
+}
+.animate-float-up { animation: float-up 1.1s ease-out forwards; }
+
+@keyframes tile-deal {
+  0%   { opacity: 0; transform: translateY(-12px) rotateX(60deg); }
+  100% { opacity: 1; transform: translateY(0)     rotateX(0deg); }
+}
+.animate-tile-deal { animation: tile-deal 0.22s ease-out forwards; }
+
+@keyframes vignette-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.8; }
+}
+.animate-vignette { animation: vignette-pulse 1.4s ease-in-out infinite; }
+
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.7); }
+  70%  { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-pop-in { animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* ─── Reduced motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shake,
+  .animate-float-up,
+  .animate-tile-deal,
+  .animate-vignette,
+  .animate-pop-in,
+  .animate-pulse {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+[data-reduced-motion="true"] .animate-shake,
+[data-reduced-motion="true"] .animate-float-up,
+[data-reduced-motion="true"] .animate-tile-deal,
+[data-reduced-motion="true"] .animate-vignette,
+[data-reduced-motion="true"] .animate-pop-in,
+[data-reduced-motion="true"] .animate-pulse {
+  animation: none !important;
+  transition-duration: 50ms !important;
 }
+
+/* ─── Mobile viewport fix ─────────────────────────────────────────────── */
+.h-dvh { height: 100dvh; }
+.min-h-dvh { min-height: 100dvh; }

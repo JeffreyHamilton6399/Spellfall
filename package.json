@@ -3,13 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/prepare-wordlist.mjs && concurrently \"next dev --port 3000\" \"partykit dev\"",
+    "dev:next": "next dev --port 3000",
+    "dev:party": "node scripts/prepare-wordlist.mjs && partykit dev",
+    "build": "node scripts/prepare-wordlist.mjs && next build",
+    "deploy:party": "node scripts/prepare-wordlist.mjs && partykit deploy",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "framer-motion": "^11",
+    "lucide-react": "^0.469",
     "next": "16.2.9",
+    "partysocket": "^1.1.19",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -18,8 +24,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "partykit": "^0.0.115",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
