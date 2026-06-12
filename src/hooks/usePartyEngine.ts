@@ -45,6 +45,9 @@ export interface UsePartyEngineResult {
   useAbility: (abilityId: string, targetId?: string) => void;
   hostStart: () => void;
   updateConfig: (patch: ConfigPatch) => void;
+  kickPlayer: (targetId: string) => void;
+  transferHost: (targetId: string) => void;
+  disconnect: () => void;
 }
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? "localhost:1999";
@@ -219,6 +222,21 @@ export function usePartyEngine(
     [send]
   );
 
+  const kickPlayer = useCallback(
+    (targetId: string) => send({ type: "KICK_PLAYER", targetId }),
+    [send]
+  );
+
+  const transferHost = useCallback(
+    (targetId: string) => send({ type: "TRANSFER_HOST", targetId }),
+    [send]
+  );
+
+  const disconnect = useCallback(() => {
+    socketRef.current?.close();
+    socketRef.current = null;
+  }, []);
+
   return {
     phase,
     gameState,
@@ -232,5 +250,8 @@ export function usePartyEngine(
     useAbility,
     hostStart,
     updateConfig,
+    kickPlayer,
+    transferHost,
+    disconnect,
   };
 }

@@ -102,7 +102,7 @@ export type ServerMsg =
     }
   | {
       type: "ERROR";
-      code: "LOBBY_FULL" | "GAME_IN_PROGRESS" | "UNKNOWN";
+      code: "LOBBY_FULL" | "GAME_IN_PROGRESS" | "KICKED" | "UNKNOWN";
       message: string;
     };
 
@@ -122,4 +122,6 @@ export type ClientMsg =
   | { type: "USE_ABILITY"; abilityId: string; targetId?: string }
   | { type: "HOST_START" }
   | { type: "UPDATE_CONFIG"; patch: ConfigPatch }
+  | { type: "KICK_PLAYER"; targetId: string }
+  | { type: "TRANSFER_HOST"; targetId: string }
   | { type: "REMATCH_VOTE" };

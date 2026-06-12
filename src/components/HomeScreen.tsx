@@ -10,7 +10,7 @@ import Button from "./ui/Button";
 
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "SPELL-";
+  let code = "";
   for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
@@ -162,32 +162,41 @@ export default function HomeScreen({ initialName }: Props) {
             </Button>
           ) : (
             <div className="flex gap-2">
-              <input
-                ref={joinRef}
-                value={joinCode}
-                onChange={(e) =>
-                  setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9\-]/g, ""))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && joinCode.length >= 4) {
-                    const code = joinCode.startsWith("SPELL-") ? joinCode : `SPELL-${joinCode}`;
-                    go(`/play/${code}`);
-                  }
-                }}
-                placeholder="SPELL-XXXX"
-                maxLength={10}
-                className="flex-1 bg-arena-800 border border-rim focus:border-rim-hi rounded-xl px-4 py-3 text-ink placeholder-ink-4 font-mono text-base outline-none transition-colors"
-                autoComplete="off"
-                spellCheck={false}
-              />
+              {/* SPELL- is cosmetic; players type only the 4-char code */}
+              <div className="flex-1 flex items-center bg-arena-800 border border-rim focus-within:border-rim-hi rounded-xl overflow-hidden transition-colors">
+                <span className="pl-4 pr-0.5 text-ink-4 font-mono text-sm select-none pointer-events-none">
+                  SPELL-
+                </span>
+                <input
+                  ref={joinRef}
+                  value={joinCode}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                    setJoinCode(v.slice(0, 4));
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const raw = e.clipboardData.getData("text").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                    // Strip SPELL prefix if pasted in full
+                    const stripped = raw.startsWith("SPELL") ? raw.slice(5) : raw;
+                    setJoinCode(stripped.slice(0, 4));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && joinCode.length >= 2) go(`/play/${joinCode}`);
+                    if (e.key === "Escape") setShowJoin(false);
+                  }}
+                  placeholder="XXXX"
+                  maxLength={4}
+                  className="flex-1 bg-transparent py-3 pr-4 text-ink placeholder-ink-4 font-mono text-base outline-none min-w-0"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </div>
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => {
-                  if (!joinCode) return;
-                  const code = joinCode.startsWith("SPELL-") ? joinCode : `SPELL-${joinCode}`;
-                  go(`/play/${code}`);
-                }}
+                disabled={joinCode.length < 2}
+                onClick={() => { if (joinCode) go(`/play/${joinCode}`); }}
               >
                 Join
               </Button>

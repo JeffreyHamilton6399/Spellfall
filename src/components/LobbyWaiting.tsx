@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Check, ChevronDown, ChevronUp, Bot, Timer, Swords, Zap } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, Bot, Timer, Swords, Zap, Crown, X, LogOut } from "lucide-react";
 import type { LobbyPlayer } from "@/party/protocol";
 import type { ConfigPatch } from "@/party/protocol";
 import type { LobbyConfig } from "@/engine/types";
@@ -18,6 +18,9 @@ interface Props {
   onHostStart?: () => void;
   onSelectAbility?: (abilityId: string) => void;
   onUpdateConfig?: (patch: ConfigPatch) => void;
+  onLeave?: () => void;
+  onKick?: (targetId: string) => void;
+  onTransferHost?: (targetId: string) => void;
 }
 
 export default function LobbyWaiting({
@@ -30,12 +33,16 @@ export default function LobbyWaiting({
   onHostStart,
   onSelectAbility,
   onUpdateConfig,
+  onLeave,
+  onKick,
+  onTransferHost,
 }: Props) {
   const [secs, setSecs] = useState<number | null>(null);
   const [selectedAbility, setSelectedAbility] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  // Open settings panel by default for the host so they see editable controls immediately
   const [showSettings, setShowSettings] = useState(() => hostId === yourPlayerId);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!lobbyCountdownEndsAt) { setSecs(null); return; }
@@ -65,7 +72,37 @@ export default function LobbyWaiting({
   const patch = (p: ConfigPatch) => onUpdateConfig?.(p);
 
   return (
-    <div className="min-h-dvh bg-arena-950 flex flex-col items-center px-4 py-8 gap-6">
+    <div className="min-h-dvh bg-arena-950 flex flex-col items-center px-4 py-8 gap-6 relative">
+
+      {/* Leave button — top left */}
+      <div className="absolute top-4 left-4">
+        {confirmLeave ? (
+          <div className="flex items-center gap-2 bg-arena-900 border border-rim rounded-xl px-3 py-1.5">
+            <span className="text-ink-3 text-xs">Leave lobby?</span>
+            <button
+              onClick={() => onLeave?.()}
+              className="text-rose-400 text-xs font-semibold hover:text-rose-300 transition-colors"
+            >
+              Leave
+            </button>
+            <button
+              onClick={() => setConfirmLeave(false)}
+              className="text-ink-4 text-xs hover:text-ink-3 transition-colors"
+            >
+              Stay
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmLeave(true)}
+            className="flex items-center gap-1.5 text-ink-4 hover:text-ink-3 text-xs font-medium transition-colors py-1.5 px-2 rounded-lg hover:bg-arena-900"
+          >
+            <LogOut size={13} />
+            Leave
+          </button>
+        )}
+      </div>
+
       {/* Logo */}
       <div className="text-center">
         <h1 className="font-display font-black text-5xl tracking-wide text-white leading-none">
@@ -80,11 +117,12 @@ export default function LobbyWaiting({
           <p className="text-ink-4 text-[10px] uppercase tracking-widest">Room Code</p>
           <button
             onClick={copyLink}
-            className="flex items-center gap-3 font-mono text-xl font-black text-emerald-400
+            className="flex items-center gap-3 font-mono text-xl font-black
               bg-arena-800 border border-rim hover:border-rim-hi rounded-xl px-5 py-2.5 transition-colors group"
             title="Click to copy invite link"
           >
-            {roomCode}
+            <span className="text-slate-500">SPELL-</span>
+            <span className="text-emerald-400">{roomCode}</span>
             <span className="text-slate-500 group-hover:text-emerald-400 transition-colors">
               {copied ? <Check size={15} /> : <Copy size={15} />}
             </span>
@@ -116,21 +154,64 @@ export default function LobbyWaiting({
           <span>Players</span>
           <span>{humanPlayers.length} / {config.maxPlayers}</span>
         </div>
-        <ul className="divide-y divide-rim/50 max-h-44 overflow-y-auto">
+        <ul className="divide-y divide-rim/50 max-h-52 overflow-y-auto">
           {humanPlayers.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span
-                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                  p.isConnected ? "bg-emerald-400" : "bg-slate-600"
-                }`}
-              />
-              <span className="text-ink text-sm font-medium flex-1 truncate">{p.name}</span>
-              <div className="flex items-center gap-2">
-                {p.id === yourPlayerId && <span className="text-slate-600 text-xs">you</span>}
-                {p.id === hostId && config.mode === "private" && (
-                  <span className="text-amber-400/70 text-xs">host</span>
-                )}
+            <li key={p.id}>
+              <div className="flex items-center gap-3 px-4 py-2.5">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    p.isConnected ? "bg-emerald-400" : "bg-slate-600"
+                  }`}
+                />
+                <span className="text-ink text-sm font-medium flex-1 truncate">{p.name}</span>
+                <div className="flex items-center gap-1.5">
+                  {p.id === yourPlayerId && (
+                    <span className="text-slate-600 text-xs">you</span>
+                  )}
+                  {p.id === hostId && (
+                    <span className="text-amber-400/70 text-xs">host</span>
+                  )}
+                  {/* Host actions: crown + kick for other human players */}
+                  {isHost && p.id !== yourPlayerId && p.kind === "human" && !starting && (
+                    <div className="flex items-center gap-0.5 ml-0.5">
+                      <button
+                        onClick={() => onTransferHost?.(p.id)}
+                        title={`Make ${p.name} host`}
+                        className="w-5 h-5 flex items-center justify-center text-slate-600 hover:text-amber-400 rounded transition-colors"
+                      >
+                        <Crown size={11} />
+                      </button>
+                      <button
+                        onClick={() => setKickTarget(kickTarget?.id === p.id ? null : { id: p.id, name: p.name })}
+                        title={`Kick ${p.name}`}
+                        className={`w-5 h-5 flex items-center justify-center rounded transition-colors ${
+                          kickTarget?.id === p.id ? "text-rose-400" : "text-slate-600 hover:text-rose-400"
+                        }`}
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
+              {/* Inline kick confirm */}
+              {kickTarget?.id === p.id && (
+                <div className="flex items-center gap-2 px-4 pb-2.5 pt-0">
+                  <span className="text-xs text-rose-400 flex-1">Remove {p.name}?</span>
+                  <button
+                    onClick={() => { onKick?.(p.id); setKickTarget(null); }}
+                    className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors"
+                  >
+                    Remove
+                  </button>
+                  <button
+                    onClick={() => setKickTarget(null)}
+                    className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </li>
           ))}
           {config.botBackfill && botCount > 0 && (
@@ -157,7 +238,6 @@ export default function LobbyWaiting({
         {showSettings && (
           <div className="border-t border-rim px-4 py-4 flex flex-col gap-4">
 
-            {/* Bot backfill */}
             {isHost ? (
               <ToggleRow
                 icon={<Bot size={14} />}
@@ -170,7 +250,6 @@ export default function LobbyWaiting({
               <ReadRow icon={<Bot size={14} />} label="Bots" value={config.botBackfill ? "On" : "Off"} />
             )}
 
-            {/* Abilities */}
             {isHost ? (
               <ToggleRow
                 icon={<Zap size={14} />}
@@ -183,7 +262,6 @@ export default function LobbyWaiting({
               <ReadRow icon={<Zap size={14} />} label="Abilities" value={config.abilitiesEnabled ? "On" : "Off"} />
             )}
 
-            {/* Round length */}
             {isHost ? (
               <SliderRow
                 icon={<Timer size={14} />}
@@ -197,7 +275,6 @@ export default function LobbyWaiting({
               <ReadRow icon={<Timer size={14} />} label="Round length" value={`${config.roundSeconds}s`} />
             )}
 
-            {/* Sudden death threshold */}
             {isHost ? (
               <SliderRow
                 icon={<Swords size={14} />}
@@ -211,7 +288,6 @@ export default function LobbyWaiting({
               <ReadRow icon={<Swords size={14} />} label="Sudden death" value={`${config.suddenDeathThreshold} players left`} />
             )}
 
-            {/* Sudden death round length */}
             {isHost ? (
               <SliderRow
                 icon={<Timer size={14} />}
@@ -236,7 +312,7 @@ export default function LobbyWaiting({
           size="lg"
           fullWidth
           displayFont
-          disabled={humanPlayers.length < 1}
+          disabled={humanPlayers.length < 1 || starting}
           className="max-w-xs text-xl"
           onClick={onHostStart}
         >

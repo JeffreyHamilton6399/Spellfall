@@ -64,12 +64,13 @@ export default class SpellfallParty implements Party.Server {
   lobbyCountdownEndsAt: number | null = null;
 
   constructor(readonly room: Party.Room) {
-    const isPrivate = room.id.startsWith("SPELL-");
+    // pub_ prefix = auto-created public lobby; everything else is a private room
+    const isPrivate = !room.id.startsWith("pub_");
     const cfg: LobbyConfig = {
       ...DEFAULT_LOBBY_CONFIG,
       mode: isPrivate ? "private" : "public",
       roomCode: room.id,
-      botBackfill: true,
+      botBackfill: !isPrivate,
     };
     this.engine = new SpellfallEngine(cfg, WORD_SET);
   }
@@ -163,12 +164,19 @@ export default class SpellfallParty implements Party.Server {
         this.hostPlayerId = humanIds[0] ?? null;
       }
 
-      // Cleanup: if no humans remain, de-register from registry
+      // Cleanup: if no humans remain, cancel countdown and de-register
       const afterState = this.engine.getState();
       const humanCount = afterState.playerIds.filter(
         (id) => afterState.players[id].kind === "human"
       ).length;
-      if (humanCount === 0) this.pingRegistryRemove();
+      if (humanCount === 0) {
+        if (this.countdownTimer) {
+          clearTimeout(this.countdownTimer);
+          this.countdownTimer = null;
+          this.lobbyCountdownEndsAt = null;
+        }
+        this.pingRegistryRemove();
+      }
 
       this.broadcastLobbyState();
     }
@@ -253,6 +261,42 @@ export default class SpellfallParty implements Party.Server {
         if (typeof patch.suddenDeathRoundSeconds === "number") safePatch.suddenDeathRoundSeconds = Math.max(5, Math.min(30, patch.suddenDeathRoundSeconds));
         if (typeof patch.suddenDeathThreshold === "number") safePatch.suddenDeathThreshold = Math.max(2, Math.min(10, patch.suddenDeathThreshold));
         this.engine.patchConfig(safePatch);
+        this.broadcastLobbyState();
+        break;
+      }
+
+      case "KICK_PLAYER": {
+        if (session.playerId !== this.hostPlayerId) break;
+        if (state.phase !== "lobby") break;
+        const kickId = msg.targetId;
+        if (!kickId || kickId === this.hostPlayerId) break;
+        // Notify the kicked connection, then close it
+        for (const s of this.sessions.values()) {
+          if (s.playerId === kickId) {
+            const kickMsg: ServerMsg = {
+              type: "ERROR",
+              code: "KICKED",
+              message: "You were removed from the lobby by the host.",
+            };
+            s.conn.send(JSON.stringify(kickMsg));
+            s.conn.close();
+            break;
+          }
+        }
+        // Remove from engine regardless of whether they have an open connection
+        this.engine.processEvent({ type: "PLAYER_LEAVE", playerId: kickId, timestamp: Date.now() });
+        this.disconnected.delete(kickId);
+        this.broadcastLobbyState();
+        break;
+      }
+
+      case "TRANSFER_HOST": {
+        if (session.playerId !== this.hostPlayerId) break;
+        if (state.phase !== "lobby") break;
+        const newHostId = msg.targetId;
+        const target = state.players[newHostId];
+        if (!target || target.kind !== "human") break;
+        this.hostPlayerId = newHostId;
         this.broadcastLobbyState();
         break;
       }

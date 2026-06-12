@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePartyEngine } from "@/hooks/usePartyEngine";
 import LobbyWaiting from "./LobbyWaiting";
 import Board from "./Board";
@@ -97,7 +97,15 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
     useAbility,
     hostStart,
     updateConfig,
+    kickPlayer,
+    transferHost,
+    disconnect,
   } = usePartyEngine(partyId, name, session);
+
+  const leaveLobby = useCallback(() => {
+    disconnect();
+    window.location.assign("/");
+  }, [disconnect]);
 
   const humanId         = yourPlayerId ?? "";
   const lastRoundRef    = useRef(-1);
@@ -115,9 +123,12 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
   if (phase.status === "connecting") return <LoadingSpinner />;
 
   if (phase.status === "error") {
+    const isKicked = phase.code === "KICKED";
     return (
       <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-5 px-4 text-center">
-        <div className="font-display font-black text-4xl text-rose-400 tracking-wide">Can&apos;t join</div>
+        <div className={`font-display font-black text-4xl tracking-wide ${isKicked ? "text-amber-400" : "text-rose-400"}`}>
+          {isKicked ? "Removed from lobby" : "Can’t join"}
+        </div>
         <div className="text-ink-3 text-sm max-w-xs">{phase.message}</div>
         <Button variant="secondary" onClick={() => window.location.assign("/")}>
           Back to home
@@ -141,6 +152,9 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
           onHostStart={hostStart}
           onSelectAbility={selectAbility}
           onUpdateConfig={updateConfig}
+          onLeave={leaveLobby}
+          onKick={kickPlayer}
+          onTransferHost={transferHost}
         />
       )}
 
