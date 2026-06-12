@@ -30,7 +30,10 @@ export default function WordInput({
     setInput("");
     setWordsThisRound([]);
     setFlash(null);
-    inputRef.current?.focus();
+    // Only auto-focus on non-touch devices (mobile keyboard would cover the game)
+    const isTouch = typeof window !== "undefined" &&
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (!isTouch) inputRef.current?.focus();
   }, [round.roundNumber]);
 
   const fullRack = [...round.letters, ...privateLetters];
@@ -85,7 +88,10 @@ export default function WordInput({
     setPressedLetter(letter);
     setTimeout(() => setPressedLetter(null), 100);
     setInput((prev) => prev + letter.toLowerCase());
-    inputRef.current?.focus();
+    // Don't focus on touch devices — would pop up keyboard on every tile tap
+    const isTouch = typeof window !== "undefined" &&
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (!isTouch) inputRef.current?.focus();
   };
 
   return (
@@ -134,7 +140,7 @@ export default function WordInput({
           onFocus={() => unlock()}
           maxLength={fullRack.length}
           placeholder="type or tap letters…"
-          inputMode="none"
+          inputMode="text"
           className={`flex-1 bg-arena-800 border rounded-xl px-4 py-3 text-white placeholder-ink-4
             text-base font-mono font-bold uppercase tracking-widest outline-none transition-colors min-w-0
             ${flash === "success"

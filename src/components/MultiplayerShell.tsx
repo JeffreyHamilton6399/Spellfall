@@ -91,6 +91,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
     selfInfo,
     connectionStatus,
     wordCounts,
+    clockOffset,
     submitWord,
     selectAbility,
     useAbility,
@@ -160,6 +161,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
                 selfEnergy={selfInfo.energy}
                 selfStatuses={selfInfo.statuses}
                 selfPrivateLetters={selfInfo.privateLetters}
+                clockOffset={clockOffset}
               />
             </ErrorBoundary>
           )}

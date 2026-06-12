@@ -39,6 +39,7 @@ export interface UsePartyEngineResult {
   selfInfo: SelfInfo;
   connectionStatus: ConnectionStatus;
   wordCounts: Record<string, number>;
+  clockOffset: number;
   submitWord: (word: string) => void;
   selectAbility: (abilityId: string) => void;
   useAbility: (abilityId: string, targetId?: string) => void;
@@ -132,6 +133,7 @@ export function usePartyEngine(
   const [selfInfo, setSelfInfo] = useState<SelfInfo>(DEFAULT_SELF);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
+  const [clockOffset, setClockOffset] = useState(0); // serverNow - clientNow at receive time
 
   const socketRef = useRef<PartySocket | null>(null);
   const myWordsPlayedRef = useRef<string[]>([]);
@@ -171,6 +173,8 @@ export function usePartyEngine(
           const { snapshot, yourPlayerId: yid } = msg;
           setYourPlayerId(yid);
           setSelfInfo(snapshot.self);
+          // Update clock offset so timers stay in sync with server
+          if (snapshot.serverNow) setClockOffset(snapshot.serverNow - Date.now());
 
           // Accumulate words from completed rounds
           if (snapshot.round?.results) {
@@ -222,6 +226,7 @@ export function usePartyEngine(
     selfInfo,
     connectionStatus,
     wordCounts,
+    clockOffset,
     submitWord,
     selectAbility,
     useAbility,

@@ -76,6 +76,7 @@ export interface GameSnapshot {
   config: LobbyConfig;
   abilityFeed: AbilityEvent[];
   self: SelfInfo;
+  serverNow: number;
 }
 
 // ── Server → Client ──────────────────────────────────────────────────────────

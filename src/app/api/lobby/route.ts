@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 
-// PARTYKIT_HOST takes priority (server-only, safe for secrets).
-// NEXT_PUBLIC_PARTYKIT_HOST is the fallback so Vercel deployments work with
-// only one env var set. Defaults to localhost:1999 for local dev.
 const PK_HOST =
   process.env.PARTYKIT_HOST ??
   process.env.NEXT_PUBLIC_PARTYKIT_HOST ??
   "localhost:1999";
 
+function registryUrl(): string {
+  // PK_HOST may already include a protocol (https://...) — don't double it.
+  if (PK_HOST.startsWith("http://") || PK_HOST.startsWith("https://")) {
+    return `${PK_HOST}/parties/registry/global`;
+  }
+  const isLocal = PK_HOST.startsWith("localhost") || PK_HOST.startsWith("127.");
+  return `${isLocal ? "http" : "https"}://${PK_HOST}/parties/registry/global`;
+}
+
 export async function POST() {
-  const url = `http://${PK_HOST}/parties/registry/global`;
+  const url = registryUrl();
   console.log(`[lobby] registry fetch → ${url}`);
 
   const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), 8_000);
+  const tid = setTimeout(() => controller.abort(), 12_000);
 
   try {
     const res = await fetch(url, {
@@ -38,9 +44,18 @@ export async function POST() {
   } catch (e) {
     clearTimeout(tid);
     const msg = e instanceof Error ? e.message : String(e);
+    const isTimeout = msg.toLowerCase().includes("abort") || (e as { name?: string }).name === "AbortError";
+    const isLocal = url.includes("localhost");
     console.error(`[lobby] fetch failed: ${msg}`);
     return NextResponse.json(
-      { error: "PartyKit unreachable", detail: msg },
+      {
+        error: "PartyKit unreachable",
+        detail: isTimeout && isLocal
+          ? "PartyKit server not running — start with: npm run dev"
+          : isTimeout
+          ? "Matchmaker timed out — please try again"
+          : msg,
+      },
       { status: 503 }
     );
   }

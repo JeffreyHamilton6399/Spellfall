@@ -34,7 +34,8 @@ export default function LobbyWaiting({
   const [secs, setSecs] = useState<number | null>(null);
   const [selectedAbility, setSelectedAbility] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  // Open settings panel by default for the host so they see editable controls immediately
+  const [showSettings, setShowSettings] = useState(() => hostId === yourPlayerId);
 
   useEffect(() => {
     if (!lobbyCountdownEndsAt) { setSecs(null); return; }
@@ -93,7 +94,7 @@ export default function LobbyWaiting({
       )}
 
       {/* Ability picker */}
-      {config.abilitiesEnabled && (
+      {config.abilitiesEnabled !== false && (
         <AbilityPicker
           selectedId={selectedAbility}
           onSelect={handleSelectAbility}

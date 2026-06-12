@@ -3,7 +3,8 @@
 export const BALANCE = {
   energy: {
     maxEnergy: 100,
-    gainPerDamage: 0.4,     // energy points per damage point dealt (pre-shield, pre-target-mult)
+    gainPerDamage: 1.2,         // energy per damage dealt — tuned for ~2-3 activations per match
+    gainPerDamageTaken: 0.4,    // comeback mechanic: taking hits also charges your ability
   },
   poison: {
     damagePerRound: 5,

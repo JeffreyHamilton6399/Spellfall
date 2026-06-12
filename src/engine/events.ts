@@ -30,4 +30,5 @@ export type GameEvent =
       abilityId: string;
       targetId?: string;
       timestamp: number;
-    };
+    }
+  | { type: "PLAYER_LEAVE"; playerId: string; timestamp: number };

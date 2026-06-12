@@ -351,6 +351,20 @@ function resolveRound(state: GameState, now: number, dictionary: Set<string>): G
     }
   }
 
+  // Energy gain from damage taken (comeback mechanic)
+  for (const pid of aliveIds) {
+    const damageTaken = Object.values(damageToPlayer[pid] ?? {}).reduce((s, d) => s + d, 0);
+    if (damageTaken > 0) {
+      const p = players[pid];
+      if (p) {
+        players[pid] = {
+          ...p,
+          energy: Math.min(BALANCE.energy.maxEnergy, p.energy + damageTaken * BALANCE.energy.gainPerDamageTaken),
+        };
+      }
+    }
+  }
+
   // Poison tick damage
   for (const pid of aliveIds) {
     const p = players[pid];
@@ -635,6 +649,16 @@ function reduce(
         event.timestamp,
         dictionary
       );
+    }
+
+    case "PLAYER_LEAVE": {
+      if (state.phase !== "lobby") return state;
+      const { [event.playerId]: _gone, ...remainingPlayers } = state.players;
+      return {
+        ...state,
+        players: remainingPlayers,
+        playerIds: state.playerIds.filter((id) => id !== event.playerId),
+      };
     }
 
     default:

@@ -7,16 +7,18 @@ interface Props {
   endsAt: number;
   durationMs: number;
   isSuddenDeath: boolean;
+  clockOffset?: number;
 }
 
-export default function RoundTimer({ endsAt, durationMs, isSuddenDeath }: Props) {
+export default function RoundTimer({ endsAt, durationMs, isSuddenDeath, clockOffset = 0 }: Props) {
   const [remaining, setRemaining] = useState(0);
   const rafRef = useRef<number | null>(null);
   const lastTickRef = useRef(-1);
 
   useEffect(() => {
     const update = () => {
-      const r = Math.max(0, endsAt - Date.now());
+      // clockOffset = serverNow - clientNow, corrects for client/server clock skew
+      const r = Math.max(0, endsAt - (Date.now() + clockOffset));
       setRemaining(r);
       const s = Math.ceil(r / 1000);
       if (s <= 5 && s !== lastTickRef.current && s > 0) {
@@ -27,7 +29,7 @@ export default function RoundTimer({ endsAt, durationMs, isSuddenDeath }: Props)
     };
     rafRef.current = requestAnimationFrame(update);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [endsAt]);
+  }, [endsAt, clockOffset]);
 
   const seconds  = Math.ceil(remaining / 1000);
   const fraction = remaining / durationMs;

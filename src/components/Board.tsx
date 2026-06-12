@@ -22,6 +22,7 @@ interface Props {
   selfEnergy?: number;
   selfStatuses?: StatusEffect[];
   selfPrivateLetters?: string[];
+  clockOffset?: number;
 }
 
 export default function Board({
@@ -33,6 +34,7 @@ export default function Board({
   selfEnergy,
   selfStatuses,
   selfPrivateLetters,
+  clockOffset = 0,
 }: Props) {
   const [showSettings, setShowSettings] = useState(false);
 
@@ -141,6 +143,7 @@ export default function Board({
                   endsAt={round.endsAt}
                   durationMs={roundDurationMs}
                   isSuddenDeath={isSuddenDeath}
+                  clockOffset={clockOffset}
                 />
 
                 {human?.isAlive ? (

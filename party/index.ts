@@ -144,8 +144,34 @@ export default class SpellfallParty implements Party.Server {
     if (!session) return;
     this.sessions.delete(conn.id);
     this.disconnected.add(session.playerId);
+
     const state = this.engine.getState();
-    if (state.phase === "lobby") this.broadcastLobbyState();
+    if (state.phase === "lobby") {
+      // Remove the player from the lobby entirely so they don't ghost
+      this.engine.processEvent({
+        type: "PLAYER_LEAVE",
+        playerId: session.playerId,
+        timestamp: Date.now(),
+      });
+
+      // Host migration: if the host left, promote the next human
+      if (session.playerId === this.hostPlayerId) {
+        const newState = this.engine.getState();
+        const humanIds = newState.playerIds.filter(
+          (id) => newState.players[id].kind === "human"
+        );
+        this.hostPlayerId = humanIds[0] ?? null;
+      }
+
+      // Cleanup: if no humans remain, de-register from registry
+      const afterState = this.engine.getState();
+      const humanCount = afterState.playerIds.filter(
+        (id) => afterState.players[id].kind === "human"
+      ).length;
+      if (humanCount === 0) this.pingRegistryRemove();
+
+      this.broadcastLobbyState();
+    }
   }
 
   onMessage(raw: string, conn: Party.Connection) {
@@ -309,6 +335,22 @@ export default class SpellfallParty implements Party.Server {
           timestamp: now,
         });
       });
+    }
+
+    // Auto-assign a random ability to any human who didn't pick one
+    const preStartState = this.engine.getState();
+    const abilityIds = Object.keys(ABILITIES);
+    for (const pid of preStartState.playerIds) {
+      const player = preStartState.players[pid];
+      if (player.kind === "human" && !player.abilityId && abilityIds.length > 0) {
+        const randomAbility = abilityIds[Math.floor(Math.random() * abilityIds.length)];
+        this.engine.processEvent({
+          type: "SELECT_ABILITY",
+          playerId: pid,
+          abilityId: randomAbility,
+          timestamp: Date.now(),
+        });
+      }
     }
 
     this.engine.processEvent({ type: "GAME_START", timestamp: Date.now() });
@@ -532,7 +574,27 @@ export default class SpellfallParty implements Party.Server {
       config: state.config,
       abilityFeed: state.abilityFeed,
       self,
+      serverNow: Date.now(),
     };
+  }
+
+  async pingRegistryRemove() {
+    const state = this.engine.getState();
+    if (state.config.mode !== "public") return;
+    const payload = JSON.stringify({ action: "REMOVE", lobbyId: this.room.id });
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stub = (this.room.context.parties as any)?.registry?.get("global");
+      await stub.fetch({ method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
+    } catch {
+      try {
+        await fetch("http://localhost:1999/parties/registry/global", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+        });
+      } catch { /* best-effort */ }
+    }
   }
 
   async pingRegistry() {

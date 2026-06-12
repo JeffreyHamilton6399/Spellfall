@@ -26,8 +26,12 @@ export default class RegistryParty implements Party.Server {
         // treat as lobby request
       }
 
+      if (body.action === "REMOVE" && body.lobbyId) {
+        this.lobbies.delete(body.lobbyId);
+        return new Response("OK");
+      }
+
       if (body.action === "UPDATE" && body.lobbyId) {
-        // Game party reporting its status
         this.lobbies.set(body.lobbyId, {
           id: body.lobbyId,
           playerCount: body.playerCount ?? 0,
@@ -64,8 +68,11 @@ export default class RegistryParty implements Party.Server {
 
   private pruneStale() {
     const cutoff = Date.now() - MAX_LOBBY_AGE_MS;
+    const emptyCutoff = Date.now() - 5 * 60 * 1000;
     for (const [id, entry] of this.lobbies) {
-      if (entry.lastSeen < cutoff) this.lobbies.delete(id);
+      if (entry.lastSeen < cutoff) { this.lobbies.delete(id); continue; }
+      if (entry.phase === "ended") { this.lobbies.delete(id); continue; }
+      if (entry.playerCount === 0 && entry.lastSeen < emptyCutoff) this.lobbies.delete(id);
     }
   }
 }
