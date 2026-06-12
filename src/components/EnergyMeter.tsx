@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Zap, Clock, Shield, Skull, Droplets } from "lucide-react";
+import AbilityIcon from "./AbilityIcon";
 import { ABILITIES } from "@/engine/abilities";
 import { BALANCE } from "@/engine/balance";
 import type { StatusEffect } from "@/engine/types";
@@ -65,7 +66,7 @@ export default function EnergyMeter({
         <div className="flex flex-col gap-0.5 min-w-[90px]">
           <div className="flex items-center justify-between text-[10px]">
             <span className="text-slate-400 flex items-center gap-1">
-              <span>{ability.icon}</span>
+              <AbilityIcon name={ability.icon} size={10} />
               <span>{ability.name}</span>
             </span>
             <span className="text-slate-500 font-mono">{Math.floor(pct)}%</span>

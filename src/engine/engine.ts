@@ -685,4 +685,10 @@ export class SpellfallEngine {
     this.state = tickState(this.state, now, this.dictionary);
     return this.state;
   }
+
+  /** Only valid in lobby phase — ignored otherwise. */
+  patchConfig(patch: Partial<LobbyConfig>): void {
+    if (this.state.phase !== "lobby") return;
+    this.state = { ...this.state, config: { ...this.state.config, ...patch } };
+  }
 }

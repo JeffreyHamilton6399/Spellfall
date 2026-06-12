@@ -5,7 +5,7 @@ import type { RoundState } from "@/engine/types";
 import { canMakeWord } from "@/engine/dictionary";
 import { getDictionary } from "@/engine/dictionary";
 import { playTilePress, playWordAccepted, playWordRejected, unlock } from "@/lib/audio";
-import { useSettings } from "@/contexts/SettingsContext";
+import Button from "./ui/Button";
 
 interface Props {
   round: RoundState;
@@ -20,11 +20,10 @@ export default function WordInput({
   wordsPlayedThisMatch,
   privateLetters = [],
 }: Props) {
-  const { settings } = useSettings();
-  const [input, setInput] = useState("");
-  const [flash, setFlash] = useState<"success" | "error" | null>(null);
-  const [wordsThisRound, setWordsThisRound] = useState<string[]>([]);
-  const [pressedLetter, setPressedLetter] = useState<string | null>(null);
+  const [input, setInput]                     = useState("");
+  const [flash, setFlash]                     = useState<"success" | "error" | null>(null);
+  const [wordsThisRound, setWordsThisRound]   = useState<string[]>([]);
+  const [pressedLetter, setPressedLetter]     = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,7 +71,6 @@ export default function WordInput({
   const handleInputChange = (val: string) => {
     const cleaned = val.replace(/[^a-zA-Z]/g, "");
     if (cleaned.length > input.length) {
-      // A letter was added
       playTilePress();
       const added = cleaned[cleaned.length - 1].toUpperCase();
       setPressedLetter(added);
@@ -106,10 +104,7 @@ export default function WordInput({
                   ? "scale-90 bg-emerald-500/30 border-emerald-400 text-emerald-200"
                   : "bg-arena-800 border-rim-hi text-white hover:bg-arena-700 active:scale-90"
                 }`}
-              style={{
-                animationDelay: `${i * 40}ms`,
-                animationFillMode: "both",
-              }}
+              style={{ animationDelay: `${i * 40}ms`, animationFillMode: "both" }}
             >
               {l}
             </button>
@@ -140,23 +135,25 @@ export default function WordInput({
           maxLength={fullRack.length}
           placeholder="type or tap letters…"
           inputMode="none"
-          className={`flex-1 bg-arena-800 border rounded-xl px-4 py-3 text-white placeholder-slate-600
+          className={`flex-1 bg-arena-800 border rounded-xl px-4 py-3 text-white placeholder-ink-4
             text-base font-mono font-bold uppercase tracking-widest outline-none transition-colors min-w-0
             ${flash === "success"
               ? "border-emerald-400 bg-emerald-500/15 text-emerald-200"
               : flash === "error"
               ? "border-rose-400 bg-rose-500/15 animate-shake"
-              : "border-rim focus:border-slate-500"
+              : "border-rim focus:border-rim-hi"
             }`}
           autoComplete="off"
           spellCheck={false}
         />
-        <button
+        <Button
+          variant="primary"
+          size="md"
+          className="px-5 touch-manipulation min-w-[56px] font-mono font-black"
           onClick={submit}
-          className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl transition-all touch-manipulation min-w-[56px]"
         >
           GO
-        </button>
+        </Button>
       </div>
 
       {/* Words this round */}

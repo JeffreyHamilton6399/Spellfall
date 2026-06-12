@@ -10,11 +10,14 @@ import {
 } from "react";
 import { setVolume, setMuted } from "@/lib/audio";
 
+export type Theme = "dark" | "light" | "contrast" | "midnight";
+
 export interface Settings {
   masterVolume: number;   // 0–1
   reducedMotion: boolean;
   colorblindMode: boolean;
   displayName: string;
+  theme: Theme;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +25,7 @@ const DEFAULT_SETTINGS: Settings = {
   reducedMotion: false,
   colorblindMode: false,
   displayName: "",
+  theme: "dark",
 };
 
 const SETTINGS_KEY = "spellfall_settings_v1";
@@ -39,7 +43,6 @@ const SettingsContext = createContext<Ctx>({
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
 
-  // Load from localStorage + detect system prefers-reduced-motion
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
@@ -55,11 +58,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Sync audio + DOM whenever settings change
   useEffect(() => {
     setVolume(settings.masterVolume);
     setMuted(settings.masterVolume === 0);
     document.documentElement.dataset.reducedMotion = settings.reducedMotion ? "true" : "false";
+    document.documentElement.dataset.theme = settings.theme;
   }, [settings]);
 
   const update = useCallback((patch: Partial<Settings>) => {

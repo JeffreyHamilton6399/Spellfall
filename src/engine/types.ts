@@ -7,6 +7,7 @@ export interface LobbyConfig {
   roundSeconds: number;
   suddenDeathRoundSeconds: number;
   suddenDeathThreshold: number;
+  abilitiesEnabled: boolean;
 }
 
 export type PlayerKind = "human" | "bot";

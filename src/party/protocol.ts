@@ -107,10 +107,18 @@ export type ServerMsg =
 
 // ── Client → Server ──────────────────────────────────────────────────────────
 
+export type ConfigPatch = Partial<
+  Pick<import("@/engine/types").LobbyConfig,
+    "botBackfill" | "maxPlayers" | "roundSeconds" |
+    "suddenDeathRoundSeconds" | "suddenDeathThreshold" | "abilitiesEnabled"
+  >
+>;
+
 export type ClientMsg =
   | { type: "SET_NAME"; name: string }
   | { type: "SUBMIT_WORD"; word: string; timestamp: number }
   | { type: "SELECT_ABILITY"; abilityId: string }
   | { type: "USE_ABILITY"; abilityId: string; targetId?: string }
   | { type: "HOST_START" }
+  | { type: "UPDATE_CONFIG"; patch: ConfigPatch }
   | { type: "REMATCH_VOTE" };

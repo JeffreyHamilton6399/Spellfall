@@ -5,6 +5,7 @@ export interface AbilityDef {
   id: string;
   name: string;
   description: string;
+  /** Lucide icon name — rendered via AbilityIcon component */
   icon: string;
   targeting: AbilityTargeting;
   trigger: AbilityTrigger;
@@ -15,7 +16,7 @@ export const ABILITIES: Record<string, AbilityDef> = {
     id: "letter_snipe",
     name: "Letter Snipe",
     description: "Next round you get a private 8th letter no one else has.",
-    icon: "🎯",
+    icon: "Crosshair",
     targeting: "none",
     trigger: "next-round",
   },
@@ -23,7 +24,7 @@ export const ABILITIES: Record<string, AbilityDef> = {
     id: "venom_word",
     name: "Venom Word",
     description: "Your next word poisons targets: 5 dmg/round for 3 rounds.",
-    icon: "☠️",
+    icon: "Skull",
     targeting: "none",
     trigger: "next-word",
   },
@@ -31,7 +32,7 @@ export const ABILITIES: Record<string, AbilityDef> = {
     id: "word_shield",
     name: "Word Shield",
     description: "Block all incoming word damage this round.",
-    icon: "🛡️",
+    icon: "Shield",
     targeting: "none",
     trigger: "instant",
   },
@@ -39,7 +40,7 @@ export const ABILITIES: Record<string, AbilityDef> = {
     id: "lifeleech",
     name: "Lifeleech",
     description: "Your next word heals you for 50% of its total damage.",
-    icon: "🩸",
+    icon: "Droplets",
     targeting: "none",
     trigger: "next-word",
   },
@@ -47,7 +48,7 @@ export const ABILITIES: Record<string, AbilityDef> = {
     id: "scramble",
     name: "Scramble",
     description: "Immediately reroll the shared rack. Timer continues.",
-    icon: "🌀",
+    icon: "Shuffle",
     targeting: "none",
     trigger: "instant",
   },
@@ -55,7 +56,7 @@ export const ABILITIES: Record<string, AbilityDef> = {
     id: "blind",
     name: "Blind",
     description: "Target's rack is hidden for the first 5s of next round.",
-    icon: "🙈",
+    icon: "EyeOff",
     targeting: "player",
     trigger: "instant",
   },

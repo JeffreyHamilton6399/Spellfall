@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   colorblind?: boolean;
 }
 
-export default function HpBar({ hp, maxHp = 100 }: Props) {
+const HpBar = memo(function HpBar({ hp, maxHp = 100 }: Props) {
   const { settings } = useSettings();
   const pct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
   const prevPctRef = useRef(pct);
@@ -55,4 +55,6 @@ export default function HpBar({ hp, maxHp = 100 }: Props) {
       />
     </div>
   );
-}
+});
+
+export default HpBar;

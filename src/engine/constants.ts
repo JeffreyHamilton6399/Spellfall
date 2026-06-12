@@ -48,4 +48,5 @@ export const DEFAULT_LOBBY_CONFIG = {
   roundSeconds: 20,
   suddenDeathRoundSeconds: 12,
   suddenDeathThreshold: 3,
+  abilitiesEnabled: true,
 };

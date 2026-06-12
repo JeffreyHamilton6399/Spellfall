@@ -1,88 +1,205 @@
 "use client";
 
-import { X, Volume2, VolumeX, Accessibility, Eye } from "lucide-react";
-import { useSettings } from "@/contexts/SettingsContext";
+import { useEffect, useRef, useState } from "react";
+import { X, Volume2, VolumeX, Accessibility, EyeOff, User, Check, Palette } from "lucide-react";
+import { useSettings, type Theme } from "@/contexts/SettingsContext";
+import Button from "./ui/Button";
 
 interface Props {
   onClose: () => void;
 }
 
+const THEMES: { id: Theme; label: string; preview: string }[] = [
+  { id: "dark",     label: "Dark Arena",      preview: "#070b12" },
+  { id: "light",    label: "Light",           preview: "#f0f4f8" },
+  { id: "contrast", label: "High Contrast",   preview: "#000000" },
+  { id: "midnight", label: "Midnight",        preview: "#0b0718" },
+];
+
+const THEME_ACCENT: Record<Theme, string> = {
+  dark:     "#10b981",
+  light:    "#059669",
+  contrast: "#ffffff",
+  midnight: "#a78bfa",
+};
+
 export default function SettingsModal({ onClose }: Props) {
   const { settings, update } = useSettings();
 
+  const [draftName, setDraftName] = useState("");
+  const [nameSaved, setNameSaved] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("spellfall_name") ?? settings.displayName ?? "";
+    setDraftName(stored);
+  }, [settings.displayName]);
+
+  const saveName = () => {
+    const n = draftName.replace(/[^a-zA-Z0-9_\s\-]/g, "").trim().slice(0, 20);
+    if (!n) return;
+    setDraftName(n);
+    localStorage.setItem("spellfall_name", n);
+    update({ displayName: n });
+    setNameSaved(true);
+    setTimeout(() => setNameSaved(false), 1500);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div className="w-full max-w-sm bg-arena-900 border border-rim rounded-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-rim">
-          <h2 className="font-display font-bold text-xl text-white tracking-wide">Settings</h2>
-          <button
+          <h2 className="font-display font-bold text-xl text-ink tracking-wide">Settings</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-8 h-8 p-0 rounded-lg"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+            aria-label="Close"
           >
-            <X size={18} />
-          </button>
+            <X size={16} />
+          </Button>
         </div>
 
-        <div className="p-5 flex flex-col gap-6">
-          {/* Volume */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                {settings.masterVolume === 0
-                  ? <VolumeX size={16} className="text-slate-500" />
-                  : <Volume2 size={16} className="text-emerald-400" />
-                }
-                Volume
-              </label>
-              <span className="text-xs font-mono text-slate-500">
-                {Math.round(settings.masterVolume * 100)}%
-              </span>
+        <div className="p-5 flex flex-col gap-5 overflow-y-auto max-h-[80vh]">
+
+          {/* ── Profile ─── */}
+          <section className="flex flex-col gap-2">
+            <SectionLabel icon={<User size={11} />}>Profile</SectionLabel>
+            <div className="flex gap-2">
+              <input
+                ref={nameRef}
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value.replace(/[^a-zA-Z0-9_\s\-]/g, ""))}
+                onKeyDown={(e) => { if (e.key === "Enter") { saveName(); nameRef.current?.blur(); } }}
+                onBlur={saveName}
+                maxLength={20}
+                placeholder="Display name…"
+                className="flex-1 bg-arena-800 border border-rim focus:border-rim-hi rounded-xl px-3.5 py-2.5 text-ink placeholder-ink-4 text-sm font-semibold outline-none transition-colors"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <div className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all border ${
+                nameSaved
+                  ? "bg-emerald-600 border-emerald-600 text-white"
+                  : "bg-arena-800 border-rim text-ink-4"
+              }`}>
+                <Check size={15} />
+              </div>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={settings.masterVolume}
-              onChange={(e) => update({ masterVolume: parseFloat(e.target.value) })}
-              className="w-full h-2 accent-emerald-500 cursor-pointer"
+          </section>
+
+          <Divider />
+
+          {/* ── Theme ─── */}
+          <section className="flex flex-col gap-3">
+            <SectionLabel icon={<Palette size={11} />}>Theme</SectionLabel>
+            <div className="grid grid-cols-2 gap-2">
+              {THEMES.map(({ id, label, preview }) => {
+                const selected = settings.theme === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => update({ theme: id })}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                      selected
+                        ? "border-emerald-500 bg-emerald-900/20 ring-1 ring-emerald-500/30"
+                        : "border-rim bg-arena-800 hover:border-rim-hi"
+                    }`}
+                  >
+                    <span
+                      className="w-5 h-5 rounded-full flex-shrink-0 border border-white/20 relative overflow-hidden"
+                      style={{ background: preview }}
+                    >
+                      <span
+                        className="absolute inset-0 rounded-full"
+                        style={{
+                          background: `linear-gradient(135deg, ${THEME_ACCENT[id]} 0%, transparent 60%)`,
+                          opacity: 0.6,
+                        }}
+                      />
+                    </span>
+                    <span className={`text-xs font-semibold ${selected ? "text-emerald-300" : "text-ink-2"}`}>
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <Divider />
+
+          {/* ── Audio ─── */}
+          <section className="flex flex-col gap-3">
+            <SectionLabel icon={settings.masterVolume === 0 ? <VolumeX size={11} /> : <Volume2 size={11} />}>
+              Audio
+            </SectionLabel>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-ink-2">
+                  {settings.masterVolume === 0 ? "Muted" : "Volume"}
+                </span>
+                <span className="text-xs font-mono text-ink-4 tabular-nums">
+                  {Math.round(settings.masterVolume * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0} max={1} step={0.05}
+                value={settings.masterVolume}
+                onChange={(e) => update({ masterVolume: parseFloat(e.target.value) })}
+                className="w-full h-2 accent-emerald-500 cursor-pointer"
+              />
+            </div>
+          </section>
+
+          <Divider />
+
+          {/* ── Accessibility ─── */}
+          <section className="flex flex-col gap-3">
+            <SectionLabel icon={<Accessibility size={11} />}>Accessibility</SectionLabel>
+            <Toggle
+              icon={<Accessibility size={15} />}
+              label="Reduce motion"
+              description="Disables animations and transitions"
+              checked={settings.reducedMotion}
+              onChange={(v) => update({ reducedMotion: v })}
             />
-            <div className="flex justify-between text-xs text-slate-600">
-              <span>Off</span>
-              <span>Max</span>
-            </div>
-          </div>
+            <Toggle
+              icon={<EyeOff size={15} />}
+              label="Colorblind HP bars"
+              description="Blue / amber / red instead of green / yellow / red"
+              checked={settings.colorblindMode}
+              onChange={(v) => update({ colorblindMode: v })}
+            />
+          </section>
 
-          {/* Reduced motion */}
-          <Toggle
-            icon={<Accessibility size={16} />}
-            label="Reduced motion"
-            description="Disable all animations and transitions"
-            checked={settings.reducedMotion}
-            onChange={(v) => update({ reducedMotion: v })}
-          />
-
-          {/* Colorblind mode */}
-          <Toggle
-            icon={<Eye size={16} />}
-            label="Colorblind-friendly HP"
-            description="Use blue/amber/red instead of green/yellow/red"
-            checked={settings.colorblindMode}
-            onChange={(v) => update({ colorblindMode: v })}
-          />
         </div>
       </div>
     </div>
   );
 }
 
+function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <label className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-ink-4 font-semibold">
+      {icon}
+      {children}
+    </label>
+  );
+}
+
+function Divider() {
+  return <div className="border-t border-rim/60" />;
+}
+
 function Toggle({
-  icon,
-  label,
-  description,
-  checked,
-  onChange,
+  icon, label, description, checked, onChange,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -92,28 +209,25 @@ function Toggle({
 }) {
   return (
     <button
+      type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-start gap-3 text-left w-full group"
+      className="flex items-center gap-3 text-left w-full py-0.5 group"
     >
-      <span className={`mt-0.5 flex-shrink-0 ${checked ? "text-emerald-400" : "text-slate-500"}`}>
+      <span className={`flex-shrink-0 mt-0.5 transition-colors ${checked ? "text-emerald-400" : "text-ink-4"}`}>
         {icon}
       </span>
-      <div className="flex-1">
-        <div className={`text-sm font-medium ${checked ? "text-white" : "text-slate-400"}`}>
+      <div className="flex-1 min-w-0">
+        <div className={`text-sm font-medium transition-colors ${checked ? "text-ink" : "text-ink-2"}`}>
           {label}
         </div>
-        <div className="text-xs text-slate-600 mt-0.5">{description}</div>
+        <div className="text-xs text-ink-4 mt-0.5 truncate">{description}</div>
       </div>
-      <div
-        className={`flex-shrink-0 w-10 h-6 rounded-full transition-colors mt-0.5 ${
-          checked ? "bg-emerald-500" : "bg-white/10"
-        }`}
-      >
-        <div
-          className={`w-5 h-5 rounded-full bg-white shadow-sm mt-0.5 transition-transform ${
-            checked ? "translate-x-[18px]" : "translate-x-0.5"
-          }`}
-        />
+      <div className={`flex-shrink-0 relative w-10 h-[22px] rounded-full transition-colors ${
+        checked ? "bg-emerald-500" : "bg-white/10"
+      }`}>
+        <div className={`absolute top-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+          checked ? "translate-x-[22px]" : "translate-x-[3px]"
+        }`} />
       </div>
     </button>
   );

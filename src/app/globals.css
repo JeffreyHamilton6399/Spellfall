@@ -1,38 +1,114 @@
 @import "tailwindcss";
 
-/* ─── Design tokens ───────────────────────────────────────────────────── */
+/* ─── Theme CSS variables ─────────────────────────────────────────────────
+   Defined outside @theme so [data-theme] overrides cascade correctly.
+   @theme references them via var() so Tailwind utilities pick up changes.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Dark arena (default) */
+  --arena-950: #070b12;
+  --arena-900: #0d1421;
+  --arena-800: #131e30;
+  --arena-700: #1a2840;
+  --arena-600: #1e3050;
+  --arena-500: #2a4266;
+  --arena-400: #3d5f8a;
+  --rim:       #1e2d45;
+  --rim-hi:    #2d4261;
+  /* Semantic text */
+  --ink:   #e2e8f0;
+  --ink-2: #94a3b8;
+  --ink-3: #64748b;
+  --ink-4: #475569;
+}
+
+[data-theme="light"] {
+  --arena-950: #f0f4f8;
+  --arena-900: #ffffff;
+  --arena-800: #f1f5f9;
+  --arena-700: #e2e8f0;
+  --arena-600: #cbd5e1;
+  --arena-500: #94a3b8;
+  --arena-400: #64748b;
+  --rim:       #dde3ea;
+  --rim-hi:    #c5cdd5;
+  --ink:   #0f172a;
+  --ink-2: #334155;
+  --ink-3: #64748b;
+  --ink-4: #94a3b8;
+}
+
+[data-theme="contrast"] {
+  --arena-950: #000000;
+  --arena-900: #080808;
+  --arena-800: #141414;
+  --arena-700: #202020;
+  --arena-600: #2c2c2c;
+  --arena-500: #3a3a3a;
+  --arena-400: #505050;
+  --rim:       #3a3a3a;
+  --rim-hi:    #5a5a5a;
+  --ink:   #ffffff;
+  --ink-2: #e8e8e8;
+  --ink-3: #aaaaaa;
+  --ink-4: #777777;
+}
+
+[data-theme="midnight"] {
+  --arena-950: #0b0718;
+  --arena-900: #110e26;
+  --arena-800: #1a1535;
+  --arena-700: #231c47;
+  --arena-600: #2c2459;
+  --arena-500: #3d3080;
+  --arena-400: #5040a0;
+  --rim:       #2a1f55;
+  --rim-hi:    #3d2e7a;
+  --ink:   #ede9fe;
+  --ink-2: #c4b5fd;
+  --ink-3: #a78bfa;
+  --ink-4: #7c3aed;
+}
+
+/* ─── Tailwind design tokens ──────────────────────────────────────────── */
 @theme {
   /* Font families */
   --font-display: var(--font-barlow), "Barlow Condensed", ui-sans-serif, system-ui;
   --font-sans:    var(--font-inter),  ui-sans-serif, system-ui;
   --font-mono:    var(--font-geist-mono), ui-monospace, monospace;
 
-  /* Arena color scale (navy-tinted darks) */
-  --color-arena-950: #070b12;
-  --color-arena-900: #0d1421;
-  --color-arena-800: #131e30;
-  --color-arena-700: #1a2840;
-  --color-arena-600: #1e3050;
-  --color-arena-500: #2a4266;
-  --color-arena-400: #3d5f8a;
+  /* Arena color scale — reference the theme CSS variables */
+  --color-arena-950: var(--arena-950);
+  --color-arena-900: var(--arena-900);
+  --color-arena-800: var(--arena-800);
+  --color-arena-700: var(--arena-700);
+  --color-arena-600: var(--arena-600);
+  --color-arena-500: var(--arena-500);
+  --color-arena-400: var(--arena-400);
 
   /* Semantic border colors */
-  --color-rim:    #1e2d45;
-  --color-rim-hi: #2d4261;
+  --color-rim:    var(--rim);
+  --color-rim-hi: var(--rim-hi);
+
+  /* Semantic text colors — overridable per theme */
+  --color-ink:   var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
 }
 
 /* ─── Base ────────────────────────────────────────────────────────────── */
 body {
-  background: #070b12;
-  color: #e2e8f0;
+  background: var(--arena-950);
+  color: var(--ink);
   -webkit-tap-highlight-color: transparent;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: #2d4261; }
+::-webkit-scrollbar-thumb { background: var(--rim); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--rim-hi); }
 
 /* ─── Typography helpers ─────────────────────────────────────────────── */
 .font-display { font-family: var(--font-barlow), "Barlow Condensed", ui-sans-serif; }
@@ -72,6 +148,17 @@ body {
 }
 .animate-pop-in { animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 
+@keyframes spin-ring {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-ring { animation: spin-ring 1s linear infinite; }
+
+@keyframes victory-glow {
+  0%, 100% { text-shadow: 0 0 20px rgba(245,158,11,0.4); }
+  50%       { text-shadow: 0 0 40px rgba(245,158,11,0.8), 0 0 80px rgba(245,158,11,0.3); }
+}
+.animate-victory-glow { animation: victory-glow 2s ease-in-out infinite; }
+
 /* ─── Reduced motion ─────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
@@ -79,6 +166,7 @@ body {
   .animate-tile-deal,
   .animate-vignette,
   .animate-pop-in,
+  .animate-spin-ring,
   .animate-pulse {
     animation: none !important;
     transition: none !important;
@@ -90,6 +178,7 @@ body {
 [data-reduced-motion="true"] .animate-tile-deal,
 [data-reduced-motion="true"] .animate-vignette,
 [data-reduced-motion="true"] .animate-pop-in,
+[data-reduced-motion="true"] .animate-spin-ring,
 [data-reduced-motion="true"] .animate-pulse {
   animation: none !important;
   transition-duration: 50ms !important;

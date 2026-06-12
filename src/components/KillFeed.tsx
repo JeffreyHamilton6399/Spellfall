@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Swords, Zap } from "lucide-react";
 import type { KillEvent, AbilityEvent } from "@/engine/types";
 import { ABILITIES } from "@/engine/abilities";
 import { useSettings } from "@/contexts/SettingsContext";
+import AbilityIcon from "./AbilityIcon";
 
 type FeedItem =
   | { kind: "kill";    ev: KillEvent;    id: number }
@@ -19,7 +20,7 @@ interface Props {
 const MAX_VISIBLE = 5;
 let itemId = 0;
 
-export default function KillFeed({ killFeed, abilityFeed = [] }: Props) {
+function KillFeedInner({ killFeed, abilityFeed = [] }: Props) {
   const { settings } = useSettings();
   const [visible, setVisible] = useState<FeedItem[]>([]);
   const killLenRef    = useRef(0);
@@ -83,8 +84,11 @@ export default function KillFeed({ killFeed, abilityFeed = [] }: Props) {
                 <span>
                   <span className="text-amber-300 font-semibold">{item.ev.playerName}</span>
                   <span className="text-slate-500 mx-1">used</span>
-                  <span className="text-white font-semibold">
-                    {ABILITIES[item.ev.abilityId]?.icon} {item.ev.abilityName}
+                  <span className="text-white font-semibold flex items-center gap-1">
+                    {ABILITIES[item.ev.abilityId]?.icon && (
+                      <AbilityIcon name={ABILITIES[item.ev.abilityId].icon} size={10} />
+                    )}
+                    {item.ev.abilityName}
                   </span>
                   {item.ev.targetName && (
                     <>
@@ -101,3 +105,10 @@ export default function KillFeed({ killFeed, abilityFeed = [] }: Props) {
     </div>
   );
 }
+
+const KillFeed = memo(KillFeedInner, (prev, next) =>
+  prev.killFeed.length === next.killFeed.length &&
+  (prev.abilityFeed?.length ?? 0) === (next.abilityFeed?.length ?? 0)
+);
+
+export default KillFeed;

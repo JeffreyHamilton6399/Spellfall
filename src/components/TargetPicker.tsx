@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import AbilityIcon from "./AbilityIcon";
 
 interface Props {
   players: { id: string; name: string }[];
@@ -16,7 +17,9 @@ export default function TargetPicker({ players, onSelect, onCancel, abilityName,
       <div className="bg-arena-900 border border-rim rounded-2xl p-5 w-full max-w-xs flex flex-col gap-4">
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-2xl leading-none mb-1">{abilityIcon}</div>
+            <div className="text-slate-300 mb-1.5">
+              <AbilityIcon name={abilityIcon} size={22} />
+            </div>
             <div className="text-white font-bold text-base">{abilityName}</div>
             <div className="text-slate-500 text-sm">Choose a target</div>
           </div>

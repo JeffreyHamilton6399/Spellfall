@@ -10,6 +10,7 @@ import type { LobbyConfig } from "@/engine/types";
 import type {
   ServerMsg,
   ClientMsg,
+  ConfigPatch,
   LobbyPlayer,
   GameSnapshot,
   ClientRoundResult,
@@ -42,6 +43,7 @@ export interface UsePartyEngineResult {
   selectAbility: (abilityId: string) => void;
   useAbility: (abilityId: string, targetId?: string) => void;
   hostStart: () => void;
+  updateConfig: (patch: ConfigPatch) => void;
 }
 
 const PARTYKIT_HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? "localhost:1999";
@@ -208,6 +210,11 @@ export function usePartyEngine(
 
   const hostStart = useCallback(() => send({ type: "HOST_START" }), [send]);
 
+  const updateConfig = useCallback(
+    (patch: ConfigPatch) => send({ type: "UPDATE_CONFIG", patch }),
+    [send]
+  );
+
   return {
     phase,
     gameState,
@@ -219,5 +226,6 @@ export function usePartyEngine(
     selectAbility,
     useAbility,
     hostStart,
+    updateConfig,
   };
 }

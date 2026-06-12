@@ -1,6 +1,7 @@
 "use client";
 
 import { ABILITIES, ABILITY_IDS } from "@/engine/abilities";
+import AbilityIcon from "./AbilityIcon";
 
 interface Props {
   selectedId: string | null;
@@ -29,7 +30,9 @@ export default function AbilityPicker({ selectedId, onSelect, disabled }: Props)
                   : "border-rim bg-arena-800 hover:bg-arena-700 hover:border-rim-hi"
               } ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
             >
-              <span className="text-2xl leading-none">{ab.icon}</span>
+              <span className="flex items-center justify-center h-7">
+                <AbilityIcon name={ab.icon} size={22} />
+              </span>
               <span
                 className={`text-xs font-bold leading-tight ${
                   selected ? "text-emerald-300" : "text-slate-300"

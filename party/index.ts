@@ -54,7 +54,7 @@ export default class SpellfallParty implements Party.Server {
   sessions = new Map<string, Session>();
   sessionIndex = new Map<string, string>();
   disconnected = new Set<string>();
-  hostConnId: string | null = null;
+  hostPlayerId: string | null = null;
 
   tickTimer: ReturnType<typeof setInterval> | null = null;
   botTimeouts: ReturnType<typeof setTimeout>[] = [];
@@ -118,7 +118,7 @@ export default class SpellfallParty implements Party.Server {
     }
 
     const playerId = `h_${sessionId.slice(0, 8)}`;
-    if (!this.hostConnId) this.hostConnId = conn.id;
+    if (!this.hostPlayerId) this.hostPlayerId = playerId;
 
     this.sessions.set(conn.id, { playerId, conn, sessionId });
     this.sessionIndex.set(sessionId, conn.id);
@@ -186,6 +186,7 @@ export default class SpellfallParty implements Party.Server {
       }
 
       case "USE_ABILITY": {
+        if (state.config.abilitiesEnabled === false) break;
         const before = this.engine.getState().abilityFeed.length;
         this.engine.processEvent({
           type: "USE_ABILITY",
@@ -207,9 +208,26 @@ export default class SpellfallParty implements Party.Server {
       }
 
       case "HOST_START": {
-        if (conn.id !== this.hostConnId) break;
+        if (session.playerId !== this.hostPlayerId) break;
         if (state.phase !== "lobby") break;
         this.launchGame();
+        break;
+      }
+
+      case "UPDATE_CONFIG": {
+        if (session.playerId !== this.hostPlayerId) break;
+        if (state.phase !== "lobby") break;
+        const { patch } = msg;
+        // Validate and clamp ranges server-side
+        const safePatch: Partial<LobbyConfig> = {};
+        if (typeof patch.botBackfill === "boolean") safePatch.botBackfill = patch.botBackfill;
+        if (typeof patch.abilitiesEnabled === "boolean") safePatch.abilitiesEnabled = patch.abilitiesEnabled;
+        if (typeof patch.maxPlayers === "number") safePatch.maxPlayers = Math.max(2, Math.min(20, patch.maxPlayers));
+        if (typeof patch.roundSeconds === "number") safePatch.roundSeconds = Math.max(10, Math.min(60, patch.roundSeconds));
+        if (typeof patch.suddenDeathRoundSeconds === "number") safePatch.suddenDeathRoundSeconds = Math.max(5, Math.min(30, patch.suddenDeathRoundSeconds));
+        if (typeof patch.suddenDeathThreshold === "number") safePatch.suddenDeathThreshold = Math.max(2, Math.min(10, patch.suddenDeathThreshold));
+        this.engine.patchConfig(safePatch);
+        this.broadcastLobbyState();
         break;
       }
 
@@ -423,8 +441,7 @@ export default class SpellfallParty implements Party.Server {
       }
     }
 
-    const hostSession = this.hostConnId ? this.sessions.get(this.hostConnId) : null;
-    const hostId = hostSession?.playerId ?? null;
+    const hostId = this.hostPlayerId;
 
     for (const session of this.sessions.values()) {
       const msg: ServerMsg = {
@@ -521,18 +538,35 @@ export default class SpellfallParty implements Party.Server {
   async pingRegistry() {
     const state = this.engine.getState();
     if (state.config.mode !== "public") return;
+    const humanCount = state.playerIds.filter((id) => state.players[id].kind === "human").length;
+    const payload = JSON.stringify({
+      action: "UPDATE",
+      lobbyId: this.room.id,
+      playerCount: humanCount,
+      phase: state.phase,
+    });
     try {
-      const humanCount = state.playerIds.filter((id) => state.players[id].kind === "human").length;
+      // Production: use party-to-party binding (Cloudflare Workers).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const stub = (this.room.context.parties as any)["registry"]?.get("global");
-      if (stub) {
-        await stub.fetch({
+      const stub = (this.room.context.parties as any)?.registry?.get("global");
+      await stub.fetch({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      });
+    } catch {
+      // Dev fallback: party-to-party stubs don't work in partykit dev,
+      // so fall back to a direct HTTP fetch to localhost.
+      try {
+        await fetch("http://localhost:1999/parties/registry/global", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "UPDATE", lobbyId: this.room.id, playerCount: humanCount, phase: state.phase }),
+          body: payload,
         });
+      } catch {
+        // Best-effort — registry ping is not critical for gameplay.
       }
-    } catch {}
+    }
   }
 }
 

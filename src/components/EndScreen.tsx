@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { Trophy, Swords, Star, BarChart2 } from "lucide-react";
 import type { GameState } from "@/engine/types";
 import { recordMatch, type MatchResult } from "@/lib/stats";
 import { playVictory, playDefeat } from "@/lib/audio";
 import { useSettings } from "@/contexts/SettingsContext";
 import StatsModal from "./StatsModal";
+import Button from "./ui/Button";
 
 interface Props {
   state: GameState;
@@ -15,13 +15,33 @@ interface Props {
   onPlayAgain: () => void;
 }
 
+function useCountUp(target: number, delay: number = 0, duration: number = 1000): number {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    let raf: number;
+    const timeout = setTimeout(() => {
+      const start = Date.now();
+      const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+      const tick = () => {
+        const progress = Math.min((Date.now() - start) / duration, 1);
+        setValue(Math.round(target * easeOut(progress)));
+        if (progress < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, delay);
+    return () => { clearTimeout(timeout); cancelAnimationFrame(raf); };
+  }, [target, delay, duration]);
+  return value;
+}
+
 export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
   const { settings } = useSettings();
   const [showStats, setShowStats] = useState(false);
-  const [statsRecorded, setStatsRecorded] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const statsRecordedRef = useRef(false);
 
-  const human = state.players[humanId];
-  const ranked = state.playerIds
+  const human   = state.players[humanId];
+  const ranked  = state.playerIds
     .map((id) => state.players[id])
     .sort((a, b) => {
       if (a.isAlive && !b.isAlive) return -1;
@@ -30,137 +50,167 @@ export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
     });
 
   const placement = ranked.findIndex((p) => p.id === humanId) + 1;
-  const total = ranked.length;
-  const isWinner = state.winnerId === humanId;
-  const topThree = ranked.slice(0, 3);
+  const total     = ranked.length;
+  const isWinner  = state.winnerId === humanId;
+  const topThree  = ranked.slice(0, 3);
+
+  const dmgDisplay  = useCountUp(human?.damageDealtTotal ?? 0, 500,  1200);
+  const killDisplay = useCountUp(human?.eliminations      ?? 0, 650,  900);
 
   useEffect(() => {
-    if (isWinner) playVictory();
-    else playDefeat();
+    const t = setTimeout(() => setVisible(true), 60);
+    return () => clearTimeout(t);
+  }, []);
 
-    if (!statsRecorded) {
+  useEffect(() => {
+    if (isWinner) {
+      playVictory();
+      if (!settings.reducedMotion) {
+        import("canvas-confetti").then(({ default: confetti }) => {
+          const colors = ["#10b981", "#34d399", "#6ee7b7", "#f59e0b", "#fbbf24", "#a78bfa"];
+          const end = Date.now() + 2800;
+          const sides = () => {
+            confetti({ particleCount: 4, angle: 60,  spread: 55, origin: { x: 0 }, colors });
+            confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors });
+            if (Date.now() < end) requestAnimationFrame(sides);
+          };
+          setTimeout(() => {
+            confetti({ particleCount: 90, spread: 90, origin: { y: 0.5 }, colors, scalar: 1.2 });
+          }, 150);
+          requestAnimationFrame(sides);
+        }).catch(() => {});
+      }
+    } else {
+      playDefeat();
+    }
+
+    if (!statsRecordedRef.current) {
+      statsRecordedRef.current = true;
       const result: MatchResult = {
         placement,
         totalPlayers: total,
-        eliminations: human?.eliminations ?? 0,
-        bestWord: human?.bestWord ?? null,
-        pangrams: 0,
+        eliminations:    human?.eliminations     ?? 0,
+        bestWord:        human?.bestWord          ?? null,
+        pangrams:        0,
         totalDamageDealt: human?.damageDealtTotal ?? 0,
       };
       recordMatch(result);
-      setStatsRecorded(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const placementText =
-    isWinner ? "WINNER" : placement <= 3 ? `#${placement}` : `#${placement}`;
-
-  const placementColor =
-    isWinner ? "text-amber-400" : placement <= 3 ? "text-emerald-400" : "text-slate-200";
-
-  const subText =
-    isWinner
-      ? `You outlasted all ${total - 1} opponents`
-      : placement <= 3
-      ? "Top 3 finish!"
-      : placement <= 10
-      ? "Solid performance"
-      : "Keep practising";
+  const subText = isWinner
+    ? `You outlasted all ${total - 1} opponents`
+    : placement <= 3 ? "Top 3 finish!"
+    : placement <= 10 ? "Solid run"
+    : "Keep practising";
 
   return (
     <>
       <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center px-4 py-12">
-        <motion.div
-          className="w-full max-w-md flex flex-col items-center gap-6"
-          initial={settings.reducedMotion ? {} : { opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+        <div
+          className={`w-full max-w-md flex flex-col items-center gap-6 transition-all duration-500 ${
+            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          }`}
         >
-          {/* Placement headline */}
+          {/* ── Headline ──────────────────────────── */}
           <div className="text-center">
-            {isWinner && (
-              <motion.div
-                initial={settings.reducedMotion ? {} : { scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-                className="text-amber-400 flex justify-center mb-2"
-              >
-                <Trophy size={48} />
-              </motion.div>
+            {isWinner ? (
+              <>
+                <div
+                  className="text-amber-400 flex justify-center mb-3"
+                  style={{
+                    transform: visible ? "scale(1)" : "scale(0)",
+                    transition: "transform 0.5s cubic-bezier(0.34,1.56,0.64,1) 150ms",
+                  }}
+                >
+                  <Trophy size={52} strokeWidth={1.5} />
+                </div>
+                <h1
+                  className={`font-display font-black text-7xl tracking-wide text-amber-400 leading-none ${
+                    settings.reducedMotion ? "" : "animate-victory-glow"
+                  }`}
+                >
+                  VICTORY
+                </h1>
+              </>
+            ) : (
+              <h1 className="font-display font-black text-6xl tracking-wide leading-none text-ink">
+                #{placement}
+                <span className="text-ink-4 text-2xl ml-2 font-semibold">/ {total}</span>
+              </h1>
             )}
-            <h1
-              className={`font-display font-black tracking-wide ${placementColor} ${
-                isWinner ? "text-7xl" : "text-6xl"
-              }`}
-            >
-              {placementText}
-              {!isWinner && (
-                <span className="text-slate-600 text-3xl ml-2 font-semibold">/ {total}</span>
-              )}
-            </h1>
-            <p className="text-slate-400 mt-1 text-sm">{subText}</p>
+            <p className="text-ink-3 mt-2 text-sm">{subText}</p>
           </div>
 
-          {/* Stats row */}
-          <div className="w-full grid grid-cols-3 gap-3">
-            <StatCard label="Damage" value={human.damageDealtTotal} icon={<Swords size={14} />} />
-            <StatCard label="Kills" value={human.eliminations} icon={<Swords size={14} />} />
+          {/* ── Stats ─────────────────────────────── */}
+          <div
+            className="w-full grid grid-cols-3 gap-3"
+            style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 300ms" }}
+          >
+            <StatCard label="Damage" value={dmgDisplay}  icon={<Swords size={14} />} />
+            <StatCard label="Kills"  value={killDisplay} icon={<Swords size={14} />} />
             <StatCard
               label="Best word"
-              value={human.bestWord?.word ?? "—"}
-              sub={human.bestWord ? `${human.bestWord.score} pts` : undefined}
+              value={human?.bestWord?.word ?? "—"}
+              sub={human?.bestWord ? `${human.bestWord.score} pts` : undefined}
               icon={<Star size={14} />}
+              mono={false}
             />
           </div>
 
-          {/* Top 3 */}
-          <div className="w-full bg-arena-900 rounded-2xl border border-rim overflow-hidden">
+          {/* ── Final standings ───────────────────── */}
+          <div
+            className="w-full bg-arena-900 rounded-2xl border border-rim overflow-hidden"
+            style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 450ms" }}
+          >
             <div className="px-4 py-2.5 border-b border-rim flex items-center gap-2">
               <Trophy size={13} className="text-amber-400" />
-              <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
+              <span className="text-[10px] text-ink-4 uppercase tracking-widest font-semibold">
                 Final standings
               </span>
             </div>
             <div className="divide-y divide-rim">
               {topThree.map((p, i) => (
                 <div key={p.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="font-display font-black text-lg w-7 text-center"
-                    style={{ color: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : "#cd7f32" }}>
+                  <span
+                    className="font-display font-black text-lg w-7 text-center"
+                    style={{ color: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : "#cd7f32" }}
+                  >
                     {i + 1}
                   </span>
                   <span
-                    className={`font-semibold truncate flex-1 ${
-                      p.id === humanId ? "text-emerald-400" : "text-slate-200"
+                    className={`font-semibold truncate flex-1 text-sm ${
+                      p.id === humanId ? "text-emerald-400" : "text-ink"
                     }`}
                   >
                     {p.name}
                   </span>
-                  <span className="text-slate-500 text-sm font-mono">
-                    {p.damageDealtTotal} dmg
-                  </span>
+                  <span className="text-ink-4 text-xs font-mono">{p.damageDealtTotal} dmg</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="w-full flex flex-col gap-2">
-            <button
-              onClick={onPlayAgain}
-              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-base rounded-xl transition-all"
-            >
+          {/* ── Actions ───────────────────────────── */}
+          <div
+            className="w-full flex flex-col gap-2"
+            style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 550ms" }}
+          >
+            <Button variant="primary" size="lg" fullWidth displayFont onClick={onPlayAgain}>
               Play Again
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="md"
+              fullWidth
+              icon={<BarChart2 size={15} />}
               onClick={() => setShowStats(true)}
-              className="w-full py-3 bg-arena-800 hover:bg-arena-700 text-slate-300 font-medium rounded-xl transition-colors flex items-center justify-center gap-2 border border-rim"
             >
-              <BarChart2 size={15} />
               Career stats
-            </button>
+            </Button>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {showStats && <StatsModal onClose={() => setShowStats(false)} />}
@@ -169,24 +219,22 @@ export default function EndScreen({ state, humanId, onPlayAgain }: Props) {
 }
 
 function StatCard({
-  label,
-  value,
-  sub,
-  icon,
+  label, value, sub, icon, mono = true,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   icon?: React.ReactNode;
+  mono?: boolean;
 }) {
   return (
     <div className="bg-arena-900 border border-rim rounded-xl p-3 text-center">
-      {icon && (
-        <div className="text-slate-600 flex justify-center mb-1">{icon}</div>
-      )}
-      <div className="text-white font-bold text-lg font-display truncate">{value}</div>
+      {icon && <div className="text-ink-4 flex justify-center mb-1">{icon}</div>}
+      <div className={`text-white font-bold text-lg font-display truncate ${mono ? "tabular-nums" : ""}`}>
+        {value}
+      </div>
       {sub && <div className="text-amber-400 text-xs font-semibold">{sub}</div>}
-      <div className="text-slate-600 text-xs uppercase tracking-wider mt-0.5">{label}</div>
+      <div className="text-ink-4 text-[10px] uppercase tracking-wider mt-0.5">{label}</div>
     </div>
   );
 }
