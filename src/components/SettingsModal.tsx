@@ -54,15 +54,13 @@ export default function SettingsModal({ onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-rim">
           <h2 className="font-display font-bold text-xl text-ink tracking-wide">Settings</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-8 h-8 p-0 rounded-lg"
+          <button
             onClick={onClose}
             aria-label="Close"
+            className="w-10 h-10 flex items-center justify-center rounded-xl text-ink-3 hover:text-ink hover:bg-arena-800 transition-colors"
           >
-            <X size={16} />
-          </Button>
+            <X size={20} />
+          </button>
         </div>
 
         <div className="p-5 flex flex-col gap-5 overflow-y-auto max-h-[80vh]">
@@ -199,6 +197,19 @@ export default function SettingsModal({ onClose }: Props) {
               onChange={(v) => update({ showDamageNumbers: v })}
             />
           </section>
+
+          <Divider />
+
+          {/* ── Footer ─── */}
+          <div className="flex flex-col items-center gap-2 pt-1 pb-1">
+            <div className="flex gap-4 text-xs text-ink-4">
+              <a href="/terms"   target="_blank" className="hover:text-ink-3 transition-colors">Terms of Service</a>
+              <a href="/privacy" target="_blank" className="hover:text-ink-3 transition-colors">Privacy Policy</a>
+            </div>
+            <p className="text-[11px] text-ink-4/60 text-center">
+              Made by Jeffrey Hamilton &middot; v1.0.0
+            </p>
+          </div>
 
         </div>
       </div>
