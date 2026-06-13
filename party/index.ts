@@ -365,7 +365,19 @@ export default class SpellfallParty implements Party.Server {
       this.scheduleBots(after);
     }
 
-    if (after.phase === "ended") this.stopTick();
+    if (after.phase === "ended") {
+      if (before.phase !== "ended") {
+        // DEBUG: log full elimination order — remove after verification
+        const total = after.playerIds.length;
+        console.log(`[SPELLFALL DEBUG] Game ended — ${total} players`);
+        after.killFeed.forEach((k, idx) => {
+          console.log(`  placement ${total - idx}/${total}: ${k.killedName} (${k.killedId.slice(0,6)}) | killer: ${k.killerName ?? "zone"} | round ${k.round}`);
+        });
+        const winner = after.winnerId ? after.players[after.winnerId] : null;
+        if (winner) console.log(`  placement 1/${total}: ${winner.name} (${after.winnerId?.slice(0,6)}) WINNER`);
+      }
+      this.stopTick();
+    }
   }
 
   stopTick() {

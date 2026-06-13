@@ -43,12 +43,21 @@ export default function EndScreen({ state, humanId, isHost, onPlayAgain, onLeave
   const statsRecordedRef = useRef(false);
 
   const human   = state.players[humanId];
+  // killFeed index = elimination order: index 0 = died first = worst placement
+  const elimOrder = new Map<string, number>();
+  state.killFeed.forEach((k, idx) => {
+    if (!elimOrder.has(k.killedId)) elimOrder.set(k.killedId, idx);
+  });
+
   const ranked  = state.playerIds
     .map((id) => state.players[id])
     .sort((a, b) => {
       if (a.isAlive && !b.isAlive) return -1;
       if (!a.isAlive && b.isAlive) return 1;
-      return b.hp - a.hp;
+      // higher index = died later = better placement = sorts first in array
+      const aOrder = elimOrder.get(a.id) ?? -1;
+      const bOrder = elimOrder.get(b.id) ?? -1;
+      return bOrder - aOrder;
     });
 
   const placement = ranked.findIndex((p) => p.id === humanId) + 1;
