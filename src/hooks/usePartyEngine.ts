@@ -15,6 +15,7 @@ import type {
   GameSnapshot,
   ClientRoundResult,
   SelfInfo,
+  RankedResult,
 } from "@/party/protocol";
 
 export type ConnectionStatus = "connecting" | "connected" | "reconnecting";
@@ -41,6 +42,7 @@ export interface UsePartyEngineResult {
   wordCounts: Record<string, number>;
   clockOffset: number;
   hostId: string | null;
+  rankedResult: RankedResult | null;
   submitWord: (word: string) => void;
   selectAbility: (abilityId: string) => void;
   useAbility: (abilityId: string, targetId?: string) => void;
@@ -141,6 +143,7 @@ export function usePartyEngine(
   const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
   const [clockOffset, setClockOffset] = useState(0);
   const [hostId, setHostId] = useState<string | null>(null);
+  const [rankedResult, setRankedResult] = useState<RankedResult | null>(null);
 
   const socketRef = useRef<PartySocket | null>(null);
   const myWordsPlayedRef = useRef<string[]>([]);
@@ -177,6 +180,7 @@ export function usePartyEngine(
             hostId: msg.hostId,
           });
           setGameState(null);
+          setRankedResult(null);
           // Reset per-match word tracking so rematches start clean
           myWordsPlayedRef.current = [];
           break;
@@ -204,6 +208,11 @@ export function usePartyEngine(
           break;
         }
         case "WORD_COUNTS": setWordCounts(msg.counts); break;
+        case "RANKED_RESULT": {
+          const { type: _, ...result } = msg;
+          setRankedResult(result as RankedResult);
+          break;
+        }
         case "ERROR": setPhase({ status: "error", code: msg.code, message: msg.message }); break;
       }
     });
@@ -257,6 +266,7 @@ export function usePartyEngine(
     wordCounts,
     clockOffset,
     hostId,
+    rankedResult,
     submitWord,
     selectAbility,
     useAbility,

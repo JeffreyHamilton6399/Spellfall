@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Zap, Globe, Lock, Hash, Swords } from "lucide-react";
+import { ChevronRight, Zap, Globe, Lock, Hash, Swords, Trophy } from "lucide-react";
 import { unlock } from "@/lib/audio";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileCorner from "./ProfileCorner";
+import RankedBadge from "./RankedBadge";
 import Button from "./ui/Button";
 
 const TOS_KEY = "spellfall_terms_v1";
@@ -32,7 +33,7 @@ interface Props { initialName?: string; }
 
 export default function HomeScreen({ initialName }: Props) {
   const router = useRouter();
-  const { user, session: authSession } = useAuth();
+  const { user, profile, session: authSession } = useAuth();
   const [name, setName]         = useState(initialName ?? "");
   const [nameSet, setNameSet]   = useState(!!initialName);
   const [joinCode, setJoinCode] = useState("");
@@ -137,6 +138,39 @@ export default function HomeScreen({ initialName }: Props) {
             </div>
             <span className="text-emerald-200/70 text-sm">Jump into the next public match</span>
           </button>
+
+          {/* ── Ranked CTA ───────────────────────────────────────── */}
+          {user ? (
+            <button
+              onClick={() => go("/play/ranked")}
+              className="w-full bg-amber-950/60 hover:bg-amber-900/60 border border-amber-700/40 hover:border-amber-600/60 active:brightness-90 rounded-2xl py-4 px-5 flex items-center gap-3 transition-colors"
+            >
+              <Trophy size={18} className="text-amber-400 flex-shrink-0" />
+              <div className="flex-1 text-left">
+                <div className="font-display font-black text-lg tracking-wide text-amber-200">Ranked</div>
+                <div className="text-amber-400/60 text-xs">Compete for rating and tiers</div>
+              </div>
+              {profile && (
+                <RankedBadge
+                  rating={profile.rating}
+                  rankedMatchesPlayed={profile.ranked_matches_played}
+                  size="sm"
+                  showLabel={false}
+                />
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push("/auth/login?mode=signin")}
+              className="w-full bg-arena-900/60 border border-rim/60 rounded-2xl py-4 px-5 flex items-center gap-3 transition-colors hover:bg-arena-800/60"
+            >
+              <Trophy size={18} className="text-ink-4 flex-shrink-0" />
+              <div className="flex-1 text-left">
+                <div className="font-semibold text-base text-ink-3">Ranked</div>
+                <div className="text-ink-4 text-xs">Sign in to play ranked mode</div>
+              </div>
+            </button>
+          )}
 
           {/* ── Secondary row: Create + Browse ───────────────────── */}
           <div className="grid grid-cols-2 gap-2.5">

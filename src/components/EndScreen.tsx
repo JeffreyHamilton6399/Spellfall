@@ -1,19 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trophy, Swords, Star, BarChart2, LogOut, RotateCcw } from "lucide-react";
+import { Trophy, Swords, Star, BarChart2, LogOut, RotateCcw, TrendingUp, TrendingDown } from "lucide-react";
 import type { GameState } from "@/engine/types";
 import { recordMatch, syncMatchToSupabase, type MatchResult } from "@/lib/stats";
 import { playVictory, playDefeat } from "@/lib/audio";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import StatsModal from "./StatsModal";
+import RankedBadge from "./RankedBadge";
 import Button from "./ui/Button";
+import type { RankedResult } from "@/party/protocol";
+import { PLACEMENT_MATCHES_REQUIRED } from "@/lib/tiers";
 
 interface Props {
   state: GameState;
   humanId: string;
   isHost: boolean;
+  isRanked?: boolean;
+  rankedResult?: RankedResult | null;
   onPlayAgain: () => void;
   onLeave: () => void;
 }
@@ -37,7 +42,7 @@ function useCountUp(target: number, delay: number = 0, duration: number = 1000):
   return value;
 }
 
-export default function EndScreen({ state, humanId, isHost, onPlayAgain, onLeave }: Props) {
+export default function EndScreen({ state, humanId, isHost, isRanked, rankedResult, onPlayAgain, onLeave }: Props) {
   const { settings } = useSettings();
   const { user } = useAuth();
   const [showStats, setShowStats] = useState(false);
@@ -234,10 +239,20 @@ export default function EndScreen({ state, humanId, isHost, onPlayAgain, onLeave
             </div>
           </div>
 
+          {/* ── Ranked result ─────────────────────── */}
+          {isRanked && (
+            <div
+              className="w-full"
+              style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 500ms" }}
+            >
+              <RatedResult result={rankedResult} />
+            </div>
+          )}
+
           {/* ── Actions ───────────────────────────── */}
           <div
             className="w-full flex flex-col gap-2"
-            style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 550ms" }}
+            style={{ opacity: visible ? 1 : 0, transition: "opacity 0.5s ease 600ms" }}
           >
             {canRematch ? (
               <Button variant="primary" size="lg" fullWidth displayFont icon={<RotateCcw size={16} />} onClick={onPlayAgain}>
@@ -272,6 +287,80 @@ export default function EndScreen({ state, humanId, isHost, onPlayAgain, onLeave
 
       {showStats && <StatsModal onClose={() => setShowStats(false)} />}
     </>
+  );
+}
+
+function RatedResult({ result }: { result: RankedResult | null | undefined }) {
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    if (result) {
+      const t = setTimeout(() => setShown(true), 200);
+      return () => clearTimeout(t);
+    }
+  }, [result]);
+
+  if (!result) {
+    return (
+      <div className="bg-arena-900 border border-rim rounded-2xl px-5 py-4 flex items-center gap-3">
+        <div className="w-4 h-4 rounded-full border-2 border-transparent border-t-emerald-500 animate-spin flex-shrink-0" />
+        <span className="text-ink-4 text-sm">Calculating rating…</span>
+      </div>
+    );
+  }
+
+  const gained  = result.delta >= 0;
+  const isPlacement = result.isPlacementGame;
+  const remaining = PLACEMENT_MATCHES_REQUIRED - result.placementGamesCompleted;
+
+  return (
+    <div
+      className={`bg-arena-900 border rounded-2xl px-5 py-4 flex flex-col gap-3 transition-all duration-500 ${
+        shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+      } ${gained ? "border-emerald-800/50" : "border-rose-800/50"}`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-ink-4 uppercase tracking-widest font-semibold">
+          {isPlacement ? "Placement match" : "Ranked"}
+        </span>
+        {isPlacement && remaining > 0 && (
+          <span className="text-xs text-ink-4">{remaining} left</span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <div className="text-ink-4 text-xs mb-1">Rating</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-white font-display font-black text-2xl tabular-nums">
+              {result.ratingAfter}
+            </span>
+            <span
+              className={`flex items-center gap-0.5 text-sm font-semibold tabular-nums ${
+                gained ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              {gained ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              {gained ? "+" : ""}{result.delta}
+            </span>
+          </div>
+        </div>
+
+        {result.placementGamesCompleted >= PLACEMENT_MATCHES_REQUIRED && (
+          <RankedBadge
+            rating={result.ratingAfter}
+            rankedMatchesPlayed={result.placementGamesCompleted}
+            size="lg"
+          />
+        )}
+      </div>
+
+      {isPlacement && remaining === 0 && (
+        <p className="text-emerald-400 text-xs font-semibold">
+          Placement matches complete — you are now ranked!
+        </p>
+      )}
+    </div>
   );
 }
 

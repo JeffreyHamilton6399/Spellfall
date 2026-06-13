@@ -11,7 +11,9 @@ import {
   Gamepad2,
   Cloud,
   LogOut,
+  Trophy,
 } from "lucide-react";
+import RankedBadge from "@/components/RankedBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { supabase } from "@/lib/supabase";
@@ -222,6 +224,12 @@ export default function SettingsPage() {
               <Section title="Stats">
                 <StatsDisplay userId={user?.id} />
               </Section>
+
+              {user && (
+                <Section title="Ranked">
+                  <RankedSection userId={user.id} />
+                </Section>
+              )}
             </>
           )}
 
@@ -356,6 +364,64 @@ function ToggleRow({
         />
       </div>
     </button>
+  );
+}
+
+function RankedSection({ userId }: { userId: string }) {
+  const [data, setData] = useState<{
+    rating: number;
+    ranked_matches_played: number;
+    ranked_wins: number;
+  } | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("profiles")
+      .select("rating, ranked_matches_played, ranked_wins")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data: d }) => {
+        if (d) setData(d as { rating: number; ranked_matches_played: number; ranked_wins: number });
+      });
+  }, [userId]);
+
+  if (!data) return <p className="text-ink-4 text-sm">Loading…</p>;
+
+  const { rating, ranked_matches_played, ranked_wins } = data;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <Trophy size={16} className="text-amber-400 flex-shrink-0" />
+        <RankedBadge rating={rating} rankedMatchesPlayed={ranked_matches_played} size="md" />
+      </div>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+        <div>
+          <dt className="text-xs text-ink-4">Rating</dt>
+          <dd className="text-white font-semibold tabular-nums">{rating}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-ink-4">Ranked games</dt>
+          <dd className="text-white font-semibold tabular-nums">{ranked_matches_played}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-ink-4">Ranked wins</dt>
+          <dd className="text-white font-semibold tabular-nums">{ranked_wins}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-ink-4">Win rate</dt>
+          <dd className="text-white font-semibold tabular-nums">
+            {ranked_matches_played > 0 ? `${Math.round((ranked_wins / ranked_matches_played) * 100)}%` : "—"}
+          </dd>
+        </div>
+      </dl>
+      <a
+        href="/leaderboard"
+        className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+      >
+        View leaderboard
+      </a>
+    </div>
   );
 }
 

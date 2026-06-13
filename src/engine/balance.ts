@@ -1,6 +1,12 @@
 // All tunable balance numbers live here — edit freely between sessions.
 
 export const BALANCE = {
+  ranked: {
+    kFactor: 32,
+    ratingFloor: 100,
+    placementMatchesRequired: 5,
+    queueWindowMs: 3 * 60 * 1000,  // 3-minute matchmaking windows
+  },
   energy: {
     maxEnergy: 100,
     gainPerDamage: 1.2,         // energy per damage dealt — tuned for ~2-3 activations per match

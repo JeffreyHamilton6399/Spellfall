@@ -15,6 +15,8 @@ import { migrateLocalStatsToSupabase } from "@/lib/stats";
 export interface Profile {
   display_name: string;
   rating: number;
+  ranked_matches_played: number;
+  ranked_wins: number;
 }
 
 interface AuthCtx {
@@ -46,9 +48,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loadProfile(userId: string): Promise<void> {
     const { data } = await supabase
       .from("profiles")
-      .select("display_name, rating")
+      .select("display_name, rating, ranked_matches_played, ranked_wins")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
     if (data) setProfile(data as Profile);
   }
 

@@ -79,6 +79,18 @@ export interface GameSnapshot {
   serverNow: number;
 }
 
+// ── Ranked result (sent once per match to each rated player) ─────────────────
+
+export interface RankedResult {
+  ratingBefore: number;
+  ratingAfter: number;
+  delta: number;
+  placement: number;
+  totalHumans: number;
+  isPlacementGame: boolean;
+  placementGamesCompleted: number; // how many of the 5 placement matches are done
+}
+
 // ── Server → Client ──────────────────────────────────────────────────────────
 
 export type ServerMsg =
@@ -104,7 +116,8 @@ export type ServerMsg =
       type: "ERROR";
       code: "LOBBY_FULL" | "GAME_IN_PROGRESS" | "KICKED" | "UNKNOWN";
       message: string;
-    };
+    }
+  | ({ type: "RANKED_RESULT" } & RankedResult);
 
 // ── Client → Server ──────────────────────────────────────────────────────────
 

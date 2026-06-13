@@ -82,9 +82,11 @@ interface Props {
   name: string;
   session: string;
   isPrivate?: boolean;
+  isRanked?: boolean;
+  onGameInProgress?: () => void;
 }
 
-export default function MultiplayerShell({ partyId, name, session }: Props) {
+export default function MultiplayerShell({ partyId, name, session, isRanked, onGameInProgress }: Props) {
   const { session: authSession } = useAuth();
   const {
     phase,
@@ -95,6 +97,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
     wordCounts,
     clockOffset,
     hostId,
+    rankedResult,
     submitWord,
     selectAbility,
     useAbility,
@@ -138,7 +141,14 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
   if (phase.status === "connecting") return <LoadingSpinner />;
 
   if (phase.status === "error") {
-    const isKicked = phase.code === "KICKED";
+    const isKicked        = phase.code === "KICKED";
+    const isInProgress    = phase.code === "GAME_IN_PROGRESS";
+
+    if (isRanked && isInProgress && onGameInProgress) {
+      onGameInProgress();
+      return <LoadingSpinner label="Finding another match…" />;
+    }
+
     return (
       <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-5 px-4 text-center">
         <div className={`font-display font-black text-4xl tracking-wide ${isKicked ? "text-amber-400" : "text-rose-400"}`}>
@@ -203,6 +213,8 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
                 state={gameState}
                 humanId={humanId}
                 isHost={hostId === humanId}
+                isRanked={isRanked}
+                rankedResult={rankedResult}
                 onPlayAgain={rematchVote}
                 onLeave={() => { disconnect(); window.location.assign("/"); }}
               />

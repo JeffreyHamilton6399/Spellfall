@@ -13,6 +13,8 @@ import { ABILITIES } from "../src/engine/abilities";
 import { BALANCE } from "../src/engine/balance";
 import { getVisibleStatuses } from "../src/engine/types";
 import type { LobbyConfig, GameState } from "../src/engine/types";
+import { computeRatingDeltas } from "../src/lib/elo";
+import { RATING_FLOOR, PLACEMENT_MATCHES_REQUIRED } from "../src/lib/tiers";
 import type {
   ClientMsg,
   ServerMsg,
@@ -104,6 +106,7 @@ interface Session {
   playerId: string;
   conn: Party.Connection;
   sessionId: string;
+  userId: string | null; // full Supabase UUID; null for guests
 }
 
 export default class SpellfallParty implements Party.Server {
@@ -122,16 +125,31 @@ export default class SpellfallParty implements Party.Server {
 
   // Cache player names so resetToLobby can restore them
   playerNames = new Map<string, string>();
+  // Persist userId across disconnect/reconnect for ranked scoring
+  playerUserIds = new Map<string, string>(); // playerId → full Supabase UUID
+
+  isRanked = false;
+  rankedResultsRecorded = false;
 
   constructor(readonly room: Party.Room) {
-    // pub_ prefix = auto-created public lobby; everything else is a private room
-    const isPrivate = !room.id.startsWith("pub_");
-    const cfg: LobbyConfig = {
-      ...DEFAULT_LOBBY_CONFIG,
-      mode: isPrivate ? "private" : "public",
-      roomCode: room.id,
-      botBackfill: !isPrivate,
-    };
+    const isRanked  = room.id.startsWith("ranked_");
+    const isPrivate = !room.id.startsWith("pub_") && !isRanked;
+    this.isRanked   = isRanked;
+
+    const cfg: LobbyConfig = isRanked
+      ? {
+          ...DEFAULT_LOBBY_CONFIG,
+          mode: "public",
+          roomCode: room.id,
+          botBackfill: true,
+          maxPlayers: 20,
+        }
+      : {
+          ...DEFAULT_LOBBY_CONFIG,
+          mode: isPrivate ? "private" : "public",
+          roomCode: room.id,
+          botBackfill: !isPrivate,
+        };
     this.engine = new SpellfallEngine(cfg, WORD_SET);
   }
 
@@ -148,7 +166,7 @@ export default class SpellfallParty implements Party.Server {
       const prev = this.sessions.get(prevConnId);
       if (prev) this.sessions.delete(prevConnId);
       const playerId = prev?.playerId ?? `h_${sessionId.slice(0, 8)}`;
-      this.sessions.set(conn.id, { playerId, conn, sessionId });
+      this.sessions.set(conn.id, { playerId, conn, sessionId, userId: prev?.userId ?? null });
       this.sessionIndex.set(sessionId, conn.id);
       this.disconnected.delete(playerId);
 
@@ -186,6 +204,18 @@ export default class SpellfallParty implements Party.Server {
       verifiedUserId = await verifySupabaseJWT(token, supabaseUrl);
     }
 
+    // Ranked mode requires a verified account
+    if (this.isRanked && !verifiedUserId) {
+      const msg: ServerMsg = {
+        type: "ERROR",
+        code: "UNKNOWN",
+        message: "Ranked mode requires a signed-in account.",
+      };
+      conn.send(JSON.stringify(msg));
+      conn.close();
+      return;
+    }
+
     const playerId = verifiedUserId
       ? `u_${verifiedUserId.replace(/-/g, "").slice(0, 12)}`
       : `h_${sessionId.slice(0, 8)}`;
@@ -194,9 +224,10 @@ export default class SpellfallParty implements Party.Server {
       this.hostPlayerId = playerId;
     }
 
-    this.sessions.set(conn.id, { playerId, conn, sessionId });
+    this.sessions.set(conn.id, { playerId, conn, sessionId, userId: verifiedUserId });
     this.sessionIndex.set(sessionId, conn.id);
     this.playerNames.set(playerId, name);
+    if (verifiedUserId) this.playerUserIds.set(playerId, verifiedUserId);
 
     this.engine.processEvent({
       type: "PLAYER_JOIN",
@@ -324,6 +355,7 @@ export default class SpellfallParty implements Party.Server {
       }
 
       case "UPDATE_CONFIG": {
+        if (this.isRanked) break; // ranked settings are fixed by the server
         if (state.config.mode !== "private") break;
         if (session.playerId !== this.hostPlayerId) break;
         if (state.phase !== "lobby") break;
@@ -433,6 +465,10 @@ export default class SpellfallParty implements Party.Server {
 
     if (after.phase === "ended") {
       this.stopTick();
+      if (this.isRanked && !this.rankedResultsRecorded) {
+        this.rankedResultsRecorded = true;
+        this.recordRankedResults().catch(() => {});
+      }
     }
   }
 
@@ -793,6 +829,7 @@ export default class SpellfallParty implements Party.Server {
     // Reset runtime state
     this.disconnected.clear();
     this.scheduledBotRound = -1;
+    this.rankedResultsRecorded = false;
     this.stopTick();
     this.startTick();
 
@@ -809,6 +846,128 @@ export default class SpellfallParty implements Party.Server {
 
     this.broadcastLobbyState();
     this.pingRegistry();
+  }
+
+  // ── Ranked match recording ────────────────────────────────────────────────
+
+  async recordRankedResults(): Promise<void> {
+    const supabaseUrl = this.room.env.SUPABASE_URL as string | undefined;
+    const serviceKey  = this.room.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
+    if (!supabaseUrl || !serviceKey) return;
+
+    const state = this.engine.getState();
+
+    // Compute elimination order for placement ranking
+    const elimOrder = new Map<string, number>();
+    state.killFeed.forEach((k, idx) => {
+      if (!elimOrder.has(k.killedId)) elimOrder.set(k.killedId, idx);
+    });
+
+    // Rank human players (winner first, last-eliminated last)
+    const humanIds = state.playerIds.filter((id) => state.players[id].kind === "human");
+    const sortedHumans = [...humanIds].sort((a, b) => {
+      const pa = state.players[a];
+      const pb = state.players[b];
+      if (pa.isAlive && !pb.isAlive) return -1;
+      if (!pa.isAlive && pb.isAlive) return 1;
+      return (elimOrder.get(b) ?? -1) - (elimOrder.get(a) ?? -1);
+    });
+
+    // Only score players with a verified userId
+    const ratedHumans = sortedHumans
+      .map((pid, idx) => ({
+        playerId: pid,
+        userId: this.playerUserIds.get(pid) ?? null,
+        placement: idx + 1,
+      }))
+      .filter((p): p is { playerId: string; userId: string; placement: number } =>
+        p.userId !== null
+      );
+
+    if (ratedHumans.length === 0) return;
+
+    // Fetch current ratings from Supabase
+    const userIdList = ratedHumans.map((p) => p.userId).join(",");
+    const ratingsRes = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=in.(${userIdList})&select=id,rating,ranked_matches_played`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    );
+    if (!ratingsRes.ok) return;
+
+    const ratingsData = await ratingsRes.json() as Array<{
+      id: string; rating: number; ranked_matches_played: number;
+    }>;
+    const ratingMap = new Map(ratingsData.map((r) => [r.id, r]));
+
+    // Compute Elo deltas
+    const playersForElo = ratedHumans.map((p) => ({
+      userId: p.userId,
+      rating: ratingMap.get(p.userId)?.rating ?? 1000,
+      placement: p.placement,
+    }));
+    const deltas = computeRatingDeltas(playersForElo);
+
+    // Build RPC payload
+    const payload = playersForElo.map((p) => {
+      const existing   = ratingMap.get(p.userId);
+      const matchesSoFar = existing?.ranked_matches_played ?? 0;
+      const isPlacement  = matchesSoFar < PLACEMENT_MATCHES_REQUIRED;
+      const delta        = deltas.get(p.userId) ?? 0;
+      const newRating    = Math.max(RATING_FLOOR, p.rating + delta);
+      return {
+        user_id:           p.userId,
+        placement:         p.placement,
+        rating_before:     p.rating,
+        rating_after:      newRating,
+        is_placement_game: isPlacement,
+        matches_so_far:    matchesSoFar,
+      };
+    });
+
+    // Write to Supabase with retry
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/record_ranked_match`, {
+          method: "POST",
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            p_room_id:     this.room.id,
+            p_human_count: ratedHumans.length,
+            p_players:     payload.map(({ matches_so_far: _, ...rest }) => rest),
+          }),
+        });
+        if (rpcRes.ok) break;
+        if (attempt < 2) await new Promise<void>((r) => setTimeout(r, 2000 * (attempt + 1)));
+      } catch {
+        if (attempt < 2) await new Promise<void>((r) => setTimeout(r, 2000 * (attempt + 1)));
+      }
+    }
+
+    // Send RANKED_RESULT to each still-connected session
+    for (const session of this.sessions.values()) {
+      if (!session.userId) continue;
+      const p = payload.find((x) => x.user_id === session.userId);
+      if (!p) continue;
+      const placementGamesCompleted = Math.min(
+        PLACEMENT_MATCHES_REQUIRED,
+        p.matches_so_far + 1
+      );
+      const msg: ServerMsg = {
+        type: "RANKED_RESULT",
+        ratingBefore:            p.rating_before,
+        ratingAfter:             p.rating_after,
+        delta:                   p.rating_after - p.rating_before,
+        placement:               p.placement,
+        totalHumans:             ratedHumans.length,
+        isPlacementGame:         p.is_placement_game,
+        placementGamesCompleted,
+      };
+      session.conn.send(JSON.stringify(msg));
+    }
   }
 
   async pingRegistryRemove() {
