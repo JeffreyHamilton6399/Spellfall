@@ -21,6 +21,9 @@ function rankedRoomId(rating: number, slotOffset = 0): string {
 }
 
 export async function POST(req: NextRequest) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: "Server not configured: SUPABASE_SERVICE_ROLE_KEY missing" }, { status: 503 });
+  }
   const supabaseAdmin = getAdmin();
 
   const authHeader = req.headers.get("Authorization");
