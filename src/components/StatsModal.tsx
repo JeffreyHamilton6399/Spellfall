@@ -22,7 +22,7 @@ export default function StatsModal({ onClose }: Props) {
         .from("player_stats")
         .select("*")
         .eq("user_id", user.id)
-        .single()
+        .maybeSingle()
         .then(({ data }) => { if (data) setRemoteStats(data as DbPlayerStats); });
     }
   }, [user]);

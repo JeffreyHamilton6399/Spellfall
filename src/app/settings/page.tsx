@@ -373,7 +373,7 @@ function StatsDisplay({ userId }: { userId?: string }) {
         .from("player_stats")
         .select("games_played,wins,words_spelled,damage_dealt")
         .eq("user_id", userId)
-        .single()
+        .maybeSingle()
         .then(({ data }) => {
           if (data) {
             const d = data as Record<string, number>;
