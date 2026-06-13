@@ -16,7 +16,8 @@ function LoginInner() {
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const oauthError = searchParams.get("oauth_error");
+  const [error, setError] = useState<string | null>(oauthError ?? null);
   const [googleError, setGoogleError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
