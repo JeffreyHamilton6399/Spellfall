@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { supabase } from "@/lib/supabase";
@@ -9,8 +9,12 @@ function CallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const handled = useRef(false);
 
   useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
+
     const code = searchParams.get("code");
     const tokenHash = searchParams.get("token_hash");
     const type = searchParams.get("type");
@@ -19,20 +23,11 @@ function CallbackInner() {
       try {
         if (code) {
           await supabase.auth.exchangeCodeForSession(code);
-          if (type === "recovery") {
-            router.replace("/auth/reset-password");
-          } else {
-            router.replace("/");
-          }
+          router.replace(type === "recovery" ? "/auth/reset-password" : "/");
         } else if (tokenHash && type) {
           await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as "recovery" | "email" });
-          if (type === "recovery") {
-            router.replace("/auth/reset-password");
-          } else {
-            router.replace("/");
-          }
+          router.replace(type === "recovery" ? "/auth/reset-password" : "/");
         } else {
-          // Hash-based OAuth (implicit flow fallback) — Supabase handles automatically
           router.replace("/");
         }
       } catch (err: unknown) {
