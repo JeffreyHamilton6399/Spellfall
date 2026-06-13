@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, BarChart2, ChevronRight, Zap, Globe, Lock, Hash, Swords } from "lucide-react";
 import { unlock } from "@/lib/audio";
+import { useAuth } from "@/contexts/AuthContext";
 import SettingsModal from "./SettingsModal";
 import StatsModal from "./StatsModal";
+import ProfileCorner from "./ProfileCorner";
 import Button from "./ui/Button";
 
 const TOS_KEY = "spellfall_terms_v1";
@@ -32,6 +34,7 @@ interface Props { initialName?: string; }
 
 export default function HomeScreen({ initialName }: Props) {
   const router = useRouter();
+  const { user, session: authSession } = useAuth();
   const [name, setName]         = useState(initialName ?? "");
   const [nameSet, setNameSet]   = useState(!!initialName);
   const [joinCode, setJoinCode] = useState("");
@@ -62,8 +65,11 @@ export default function HomeScreen({ initialName }: Props) {
 
   const go = (path: string) => {
     unlock();
-    const session = getOrCreateSession();
-    router.push(`${path}?name=${encodeURIComponent(name)}&session=${session}`);
+    const sessionId = user ? user.id : getOrCreateSession();
+    const displayName = name || "Player";
+    const params = new URLSearchParams({ name: displayName, session: sessionId });
+    if (authSession?.access_token) params.set("token", authSession.access_token);
+    router.push(`${path}?${params.toString()}`);
   };
 
   /* ── Name entry screen ─────────────────────────────────────────────── */
@@ -92,6 +98,12 @@ export default function HomeScreen({ initialName }: Props) {
             <ChevronRight size={20} />
           </Button>
         </div>
+        <button
+          onClick={() => router.push("/auth/login")}
+          className="text-ink-4 hover:text-ink-3 text-xs transition-colors"
+        >
+          Have an account? Sign in
+        </button>
       </div>
     );
   }
@@ -109,6 +121,7 @@ export default function HomeScreen({ initialName }: Props) {
           <Button variant="ghost" size="sm" className="w-9 h-9 p-0" onClick={() => setShowSettings(true)} aria-label="Settings">
             <Settings size={18} />
           </Button>
+          <ProfileCorner />
         </div>
 
         {/* Logo */}

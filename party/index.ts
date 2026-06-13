@@ -25,6 +25,32 @@ import type {
 } from "../src/party/protocol";
 import { WORD_SET } from "./wordlist-data";
 
+// ── JWT verification ──────────────────────────────────────────────────────
+
+async function verifySupabaseJWT(token: string, secret: string): Promise<string | null> {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw", enc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false, ["verify"]
+    );
+    const sig = Uint8Array.from(
+      atob(parts[2].replace(/-/g, "+").replace(/_/g, "/")),
+      (c) => c.charCodeAt(0)
+    );
+    const valid = await crypto.subtle.verify("HMAC", key, sig, enc.encode(parts[0] + "." + parts[1]));
+    if (!valid) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload.sub as string;
+  } catch {
+    return null;
+  }
+}
+
 const MAX_PLAYERS = 20;
 const PUBLIC_COUNTDOWN_MS = 18_000;   // wait window with 2+ humans
 const SOLO_BOT_FILL_MS    = 30_000;   // solo wait before bot-fill
@@ -81,7 +107,7 @@ export default class SpellfallParty implements Party.Server {
 
   // ── Connection lifecycle ──────────────────────────────────────────────────
 
-  onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
+  async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
     const url = new URL(ctx.request.url);
     const rawName = url.searchParams.get("name") ?? "Player";
     const name = profanityCheck(sanitizeName(rawName));
@@ -122,7 +148,17 @@ export default class SpellfallParty implements Party.Server {
       return;
     }
 
-    const playerId = `h_${sessionId.slice(0, 8)}`;
+    // Verify Supabase JWT if provided; gives a stable u_ prefix ID for logged-in users
+    const token = url.searchParams.get("token");
+    const jwtSecret = this.room.env.SUPABASE_JWT_SECRET as string | undefined;
+    let verifiedUserId: string | null = null;
+    if (token && jwtSecret) {
+      verifiedUserId = await verifySupabaseJWT(token, jwtSecret);
+    }
+
+    const playerId = verifiedUserId
+      ? `u_${verifiedUserId.replace(/-/g, "").slice(0, 12)}`
+      : `h_${sessionId.slice(0, 8)}`;
     // Only private rooms have a host; public rooms are server-managed
     if (state.config.mode === "private" && !this.hostPlayerId) {
       this.hostPlayerId = playerId;

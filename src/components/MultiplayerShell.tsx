@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePartyEngine } from "@/hooks/usePartyEngine";
+import { useAuth } from "@/contexts/AuthContext";
 import LobbyWaiting from "./LobbyWaiting";
 import Board from "./Board";
 import EndScreen from "./EndScreen";
@@ -84,6 +85,7 @@ interface Props {
 }
 
 export default function MultiplayerShell({ partyId, name, session }: Props) {
+  const { session: authSession } = useAuth();
   const {
     phase,
     gameState,
@@ -102,7 +104,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
     transferHost,
     rematchVote,
     disconnect,
-  } = usePartyEngine(partyId, name, session);
+  } = usePartyEngine(partyId, name, session, authSession?.access_token);
 
   const leaveLobby = useCallback(() => {
     disconnect();

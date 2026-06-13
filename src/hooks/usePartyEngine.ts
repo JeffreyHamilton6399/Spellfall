@@ -130,7 +130,8 @@ function snapshotToGameState(
 export function usePartyEngine(
   partyId: string,
   name: string,
-  session: string
+  session: string,
+  token?: string
 ): UsePartyEngineResult {
   const [phase, setPhase] = useState<PartyPhase>({ status: "connecting" });
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -147,10 +148,12 @@ export function usePartyEngine(
   useEffect(() => { loadDictionary().catch(() => {}); }, []);
 
   useEffect(() => {
+    const query: Record<string, string> = { name, session };
+    if (token) query.token = token;
     const socket = new PartySocket({
       host: PARTYKIT_HOST,
       room: partyId,
-      query: { name, session },
+      query,
     });
     socketRef.current = socket;
 
@@ -206,7 +209,7 @@ export function usePartyEngine(
     });
 
     return () => { socket.close(); socketRef.current = null; };
-  }, [partyId, name, session]);
+  }, [partyId, name, session, token]);
 
   const send = useCallback((msg: ClientMsg) => {
     socketRef.current?.send(JSON.stringify(msg));

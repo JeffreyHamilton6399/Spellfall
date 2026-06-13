@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Trophy, Swords, Star, BarChart2, LogOut, RotateCcw } from "lucide-react";
 import type { GameState } from "@/engine/types";
-import { recordMatch, type MatchResult } from "@/lib/stats";
+import { recordMatch, syncMatchToSupabase, type MatchResult } from "@/lib/stats";
 import { playVictory, playDefeat } from "@/lib/audio";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import StatsModal from "./StatsModal";
 import Button from "./ui/Button";
 
@@ -38,6 +39,7 @@ function useCountUp(target: number, delay: number = 0, duration: number = 1000):
 
 export default function EndScreen({ state, humanId, isHost, onPlayAgain, onLeave }: Props) {
   const { settings } = useSettings();
+  const { user } = useAuth();
   const [showStats, setShowStats] = useState(false);
   const [visible, setVisible] = useState(false);
   const statsRecordedRef = useRef(false);
@@ -109,12 +111,13 @@ export default function EndScreen({ state, humanId, isHost, onPlayAgain, onLeave
       const result: MatchResult = {
         placement,
         totalPlayers: total,
-        eliminations:    human?.eliminations     ?? 0,
-        bestWord:        human?.bestWord          ?? null,
-        pangrams:        0,
-        totalDamageDealt: human?.damageDealtTotal ?? 0,
+        eliminations:     human?.eliminations      ?? 0,
+        bestWord:         human?.bestWord           ?? null,
+        pangrams:         0,
+        totalDamageDealt: human?.damageDealtTotal   ?? 0,
       };
       recordMatch(result);
+      if (user) syncMatchToSupabase(user.id, result).catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

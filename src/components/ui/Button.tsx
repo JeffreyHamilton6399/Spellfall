@@ -9,6 +9,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:     ButtonVariant;
   size?:        ButtonSize;
   fullWidth?:   boolean;
+  loading?:     boolean;
   icon?:        ReactNode;
   iconAfter?:   ReactNode;
   displayFont?: boolean;
@@ -47,11 +48,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     variant     = "secondary",
     size        = "md",
     fullWidth   = false,
+    loading     = false,
     icon,
     iconAfter,
     displayFont = false,
     children,
     className   = "",
+    disabled,
     ...props
   },
   ref
@@ -68,10 +71,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     .join(" ");
 
   return (
-    <button ref={ref} className={cls} {...props}>
-      {icon && <span className="flex-shrink-0">{icon}</span>}
+    <button ref={ref} className={cls} disabled={disabled || loading} {...props}>
+      {loading ? (
+        <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+      ) : icon ? (
+        <span className="flex-shrink-0">{icon}</span>
+      ) : null}
       {children}
-      {iconAfter && <span className="flex-shrink-0">{iconAfter}</span>}
+      {!loading && iconAfter && <span className="flex-shrink-0">{iconAfter}</span>}
     </button>
   );
 });

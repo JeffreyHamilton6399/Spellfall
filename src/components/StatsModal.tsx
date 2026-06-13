@@ -1,7 +1,9 @@
 "use client";
 
-import { X, Trophy, Swords, Star, Zap } from "lucide-react";
+import { X, Trophy, Swords, Star, Zap, Cloud } from "lucide-react";
 import { getStats, type PlayerStats } from "@/lib/stats";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase, type DbPlayerStats } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
 interface Props {
@@ -9,21 +11,34 @@ interface Props {
 }
 
 export default function StatsModal({ onClose }: Props) {
+  const { user } = useAuth();
   const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [remoteStats, setRemoteStats] = useState<DbPlayerStats | null>(null);
 
   useEffect(() => {
     setStats(getStats());
-  }, []);
+    if (user) {
+      supabase
+        .from("player_stats")
+        .select("*")
+        .eq("user_id", user.id)
+        .single()
+        .then(({ data }) => { if (data) setRemoteStats(data as DbPlayerStats); });
+    }
+  }, [user]);
 
-  const winRate =
-    stats && stats.matches > 0
-      ? Math.round((stats.wins / stats.matches) * 100)
-      : 0;
+  // Prefer Supabase stats for logged-in users; fall back to local
+  const matches = remoteStats?.matches_played ?? stats?.matches ?? 0;
+  const wins = remoteStats?.wins ?? stats?.wins ?? 0;
+  const eliminations = remoteStats?.total_eliminations ?? stats?.totalEliminations ?? 0;
+  const top3 = stats?.top3 ?? 0;
+  const pangrams = remoteStats?.pangrams ?? stats?.pangrams ?? 0;
+  const bestWord = remoteStats
+    ? (remoteStats.best_word ? { word: remoteStats.best_word, score: remoteStats.best_word_score } : null)
+    : stats?.bestWord ?? null;
 
-  const top3Rate =
-    stats && stats.matches > 0
-      ? Math.round((stats.top3 / stats.matches) * 100)
-      : 0;
+  const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0;
+  const top3Rate = matches > 0 ? Math.round((top3 / matches) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -39,48 +54,30 @@ export default function StatsModal({ onClose }: Props) {
           </button>
         </div>
 
-        {!stats || stats.matches === 0 ? (
+        {matches === 0 ? (
           <div className="p-8 text-center text-slate-500">
             <p className="text-sm">No matches played yet.</p>
             <p className="text-xs mt-1">Play a game to start tracking stats.</p>
           </div>
         ) : (
           <div className="p-5 flex flex-col gap-4">
+            {user && remoteStats && (
+              <div className="flex items-center gap-1.5 text-ink-4 text-xs">
+                <Cloud size={11} />
+                <span>Synced to account</span>
+              </div>
+            )}
+
             {/* Top grid */}
             <div className="grid grid-cols-3 gap-2">
-              <StatCard
-                icon={<Trophy size={14} />}
-                label="Matches"
-                value={stats.matches}
-                color="text-amber-400"
-              />
-              <StatCard
-                icon={<Trophy size={14} />}
-                label="Wins"
-                value={`${stats.wins} (${winRate}%)`}
-                color="text-emerald-400"
-              />
-              <StatCard
-                icon={<Trophy size={14} />}
-                label="Top 3"
-                value={`${stats.top3} (${top3Rate}%)`}
-                color="text-sky-400"
-              />
+              <StatCard icon={<Trophy size={14} />} label="Matches" value={matches} color="text-amber-400" />
+              <StatCard icon={<Trophy size={14} />} label="Wins" value={`${wins} (${winRate}%)`} color="text-emerald-400" />
+              <StatCard icon={<Trophy size={14} />} label="Top 3" value={`${top3} (${top3Rate}%)`} color="text-sky-400" />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <StatCard
-                icon={<Swords size={14} />}
-                label="Eliminations"
-                value={stats.totalEliminations}
-                color="text-rose-400"
-              />
-              <StatCard
-                icon={<Zap size={14} />}
-                label="Total damage"
-                value={stats.totalDamageDealt}
-                color="text-orange-400"
-              />
+              <StatCard icon={<Swords size={14} />} label="Eliminations" value={eliminations} color="text-rose-400" />
+              <StatCard icon={<Zap size={14} />} label="Pangrams" value={pangrams} color="text-orange-400" />
             </div>
 
             {/* Best word */}
@@ -88,13 +85,13 @@ export default function StatsModal({ onClose }: Props) {
               <Star size={18} className="text-amber-400 flex-shrink-0" />
               <div>
                 <div className="text-xs text-slate-500 uppercase tracking-wider">Best word</div>
-                {stats.bestWord ? (
+                {bestWord ? (
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <span className="font-mono font-bold text-white text-lg uppercase tracking-widest">
-                      {stats.bestWord.word}
+                      {bestWord.word}
                     </span>
                     <span className="text-amber-400 text-sm font-semibold">
-                      {stats.bestWord.score} pts
+                      {bestWord.score} pts
                     </span>
                   </div>
                 ) : (
@@ -102,12 +99,6 @@ export default function StatsModal({ onClose }: Props) {
                 )}
               </div>
             </div>
-
-            {stats.pangrams > 0 && (
-              <div className="text-center text-xs text-emerald-400/70">
-                {stats.pangrams} pangram{stats.pangrams !== 1 ? "s" : ""} found
-              </div>
-            )}
           </div>
         )}
       </div>
