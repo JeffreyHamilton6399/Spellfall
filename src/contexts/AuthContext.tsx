@@ -64,16 +64,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      handleSession(data.session).finally(() => setLoading(false));
-    });
+    const fallback = setTimeout(() => setLoading(false), 3000);
+
+    supabase.auth.getSession()
+      .then(({ data }) => handleSession(data.session))
+      .catch(() => {})
+      .finally(() => { clearTimeout(fallback); setLoading(false); });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, newSession) => {
         handleSession(newSession).finally(() => setLoading(false));
       }
     );
-    return () => subscription.unsubscribe();
+    return () => { clearTimeout(fallback); subscription.unsubscribe(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
