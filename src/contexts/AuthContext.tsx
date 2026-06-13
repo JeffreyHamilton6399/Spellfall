@@ -24,6 +24,7 @@ interface AuthCtx {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateDisplayName: (name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthCtx>({
@@ -33,6 +34,7 @@ const AuthContext = createContext<AuthCtx>({
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
+  updateDisplayName: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -90,9 +92,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session?.user.id) await loadProfile(session.user.id);
   };
 
+  const updateDisplayName = async (name: string) => {
+    const clean = name.replace(/[^a-zA-Z0-9_\s\-]/g, "").trim().slice(0, 20);
+    if (!clean || !session) return;
+    await supabase.from("profiles").update({ display_name: clean }).eq("id", session.user.id);
+    await loadProfile(session.user.id);
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, profile, loading, signOut, refreshProfile }}
+      value={{ user: session?.user ?? null, session, profile, loading, signOut, refreshProfile, updateDisplayName }}
     >
       {children}
     </AuthContext.Provider>
