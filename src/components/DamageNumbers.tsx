@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
+import { playDamageTaken } from "@/lib/audio";
 
 interface Floater {
   id: number;
@@ -26,8 +27,10 @@ export default function DamageNumbers({ hp }: Props) {
     prevRef.current = hp;
     if (delta === 0) return;
 
-    const id = ++nextId;
     const isHeal = delta > 0;
+    if (!isHeal) playDamageTaken();
+
+    const id = ++nextId;
     setFloaters((prev) => [
       ...prev.slice(-6),
       { id, value: Math.abs(delta), isHeal, x: 30 + Math.random() * 40 },

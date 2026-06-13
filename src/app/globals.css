@@ -159,6 +159,25 @@ body {
 }
 .animate-victory-glow { animation: victory-glow 2s ease-in-out infinite; }
 
+@keyframes submit-success {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.018); }
+  100% { transform: scale(1); }
+}
+.animate-submit-success { animation: submit-success 0.22s ease-out; }
+
+@keyframes zone-flash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-zone-flash { animation: zone-flash 0.55s ease-out forwards; }
+
+@keyframes sd-flash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-sd-flash { animation: sd-flash 0.7s ease-out forwards; }
+
 /* ─── Reduced motion ─────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
@@ -167,7 +186,10 @@ body {
   .animate-vignette,
   .animate-pop-in,
   .animate-spin-ring,
-  .animate-pulse {
+  .animate-pulse,
+  .animate-submit-success,
+  .animate-zone-flash,
+  .animate-sd-flash {
     animation: none !important;
     transition: none !important;
   }
@@ -179,7 +201,10 @@ body {
 [data-reduced-motion="true"] .animate-vignette,
 [data-reduced-motion="true"] .animate-pop-in,
 [data-reduced-motion="true"] .animate-spin-ring,
-[data-reduced-motion="true"] .animate-pulse {
+[data-reduced-motion="true"] .animate-pulse,
+[data-reduced-motion="true"] .animate-submit-success,
+[data-reduced-motion="true"] .animate-zone-flash,
+[data-reduced-motion="true"] .animate-sd-flash {
   animation: none !important;
   transition-duration: 50ms !important;
 }

@@ -137,3 +137,29 @@ export function playVictory() {
   const notes = [523, 659, 784, 1046, 784, 1046, 1318];
   notes.forEach((f, i) => tone(f, "sine", 0.22, 0.20, i * 0.10));
 }
+
+// Pangram jackpot sting — triumphant rising burst
+export function playPangram() {
+  [523, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, "triangle", 0.14, 0.20, i * 0.06));
+  tone(1568, "sine", 0.35, 0.22, 0.30);
+}
+
+// Sudden death alarm — harsh stutter at SD start
+export function playSuddenDeathAlarm() {
+  [0, 0.10, 0.20, 0.30].forEach((delay, i) =>
+    tone(i % 2 === 0 ? 440 : 370, "sawtooth", 0.09, 0.30, delay)
+  );
+  tone(260, "sawtooth", 0.28, 0.22, 0.42);
+}
+
+// Nearby elimination — soft descending thud (someone else died)
+export function playNearbyElimination() {
+  tone(300, "sine", 0.12, 0.14);
+  tone(220, "sine", 0.18, 0.12, 0.09);
+}
+
+// Low-HP heartbeat tick — call at interval when HP ≤ 30
+export function playLowHpTick() {
+  tone(55, "sine", 0.05, 0.22);
+  tone(48, "sine", 0.09, 0.18, 0.06);
+}

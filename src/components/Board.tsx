@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Settings, LogOut } from "lucide-react";
+import { playElimination, playNearbyElimination, playSuddenDeathAlarm, playLowHpTick } from "@/lib/audio";
 import type { GameState, StatusEffect } from "@/engine/types";
 import { useSettings } from "@/contexts/SettingsContext";
 import PlayerList from "./PlayerList";
@@ -41,10 +42,58 @@ export default function Board({
 }: Props) {
   const [showSettings, setShowSettings] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const { settings } = useSettings();
+  const [hpFlashKey, setHpFlashKey] = useState(0);
+  const [sdFlashKey, setSdFlashKey] = useState(0);
 
   const { round, phase } = state;
   const human = state.players[humanId];
+
+  const prevPhaseRef        = useRef(phase);
+  const prevKillFeedLenRef  = useRef(state.killFeed.length);
+  const prevHpRef           = useRef(human?.hp ?? 100);
+  const heartbeatRef        = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Sudden death alarm + entrance flash
+  useEffect(() => {
+    if (phase === "sudden_death" && prevPhaseRef.current !== "sudden_death") {
+      playSuddenDeathAlarm();
+      setSdFlashKey((k) => k + 1);
+    }
+    prevPhaseRef.current = phase;
+  }, [phase]);
+
+  // Kill-feed sounds
+  useEffect(() => {
+    const newKills = state.killFeed.slice(prevKillFeedLenRef.current);
+    prevKillFeedLenRef.current = state.killFeed.length;
+    for (const k of newKills) {
+      if (k.killedId === humanId) continue; // own death handled by EndScreen
+      if (k.killerId === humanId) playElimination();
+      else playNearbyElimination();
+    }
+  }, [state.killFeed, humanId]);
+
+  // HP-drop → screen-edge flash
+  useEffect(() => {
+    const hp = human?.hp ?? 100;
+    if (hp < prevHpRef.current && human?.isAlive) setHpFlashKey((k) => k + 1);
+    prevHpRef.current = hp;
+  }, [human?.hp, human?.isAlive]);
+
+  // Low-HP heartbeat
+  useEffect(() => {
+    const lowHp = !!(human?.isAlive && (human?.hp ?? 100) <= 30);
+    if (lowHp) {
+      if (!heartbeatRef.current) {
+        playLowHpTick();
+        heartbeatRef.current = setInterval(playLowHpTick, 1200);
+      }
+    } else {
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+    }
+    return () => { if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; } };
+  }, [human?.hp, human?.isAlive]);
+  const { settings } = useSettings();
 
   const energy         = selfEnergy   ?? human?.energy         ?? 0;
   const statuses       = selfStatuses ?? human?.statuses        ?? [];
@@ -75,6 +124,25 @@ export default function Board({
 
   return (
     <>
+      {/* HP-drop screen-edge flash */}
+      {hpFlashKey > 0 && !settings.reducedMotion && (
+        <div
+          key={hpFlashKey}
+          className="fixed inset-0 pointer-events-none z-[5] animate-zone-flash"
+          style={{ boxShadow: "inset 0 0 80px 30px rgba(244,63,94,0.5)" }}
+          aria-hidden
+        />
+      )}
+
+      {/* Sudden death entrance flash */}
+      {sdFlashKey > 0 && !settings.reducedMotion && (
+        <div
+          key={sdFlashKey}
+          className="fixed inset-0 pointer-events-none z-[5] animate-sd-flash bg-rose-950/50"
+          aria-hidden
+        />
+      )}
+
       {/* Sudden-death vignette */}
       {isSuddenDeath && (
         <div
@@ -190,7 +258,7 @@ export default function Board({
                         <span
                           className={`font-display font-black text-2xl tabular-nums leading-none flex-shrink-0 ${
                             human.hp <= 30
-                              ? "text-rose-400"
+                              ? "text-rose-400 animate-pulse"
                               : human.hp <= 60
                               ? "text-amber-400"
                               : "text-emerald-400"

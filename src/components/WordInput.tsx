@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, KeyboardEvent } from "react";
 import type { RoundState } from "@/engine/types";
 import { canMakeWord } from "@/engine/dictionary";
 import { getDictionary } from "@/engine/dictionary";
-import { playTilePress, playWordAccepted, playWordRejected, unlock } from "@/lib/audio";
+import { playTilePress, playWordAccepted, playWordRejected, playPangram, unlock } from "@/lib/audio";
 import Button from "./ui/Button";
 
 interface Props {
@@ -76,7 +76,9 @@ export default function WordInput({
       setTimeout(() => setFlash(null), 500);
       return;
     }
-    playWordAccepted();
+    const uniqueRack = [...new Set(round.letters.map((l) => l.toUpperCase()))];
+    const isPangram = uniqueRack.every((l) => w.includes(l));
+    if (isPangram) playPangram(); else playWordAccepted();
     onSubmit(w);
     setWordsThisRound((prev) => [...prev, w]);
     setInput("");
@@ -115,7 +117,7 @@ export default function WordInput({
   return (
     <div className="flex flex-col items-center gap-4 w-full max-w-sm">
       {/* Letter rack */}
-      <div className="flex gap-1.5 flex-wrap justify-center" style={{ perspective: "400px" }}>
+      <div key={round.roundNumber} className="flex gap-1.5 flex-wrap justify-center" style={{ perspective: "400px" }}>
         {round.letters.map((l, i) => {
           const consumed = tileConsumed[i];
           const isPressed = pressedLetter === l && !consumed;
@@ -125,14 +127,14 @@ export default function WordInput({
               onClick={() => tapTile(l, i)}
               disabled={consumed}
               className={`w-11 h-11 flex items-center justify-center rounded-xl font-mono font-black text-xl select-none
-                border shadow-sm transition-all duration-100 touch-manipulation
+                border shadow-sm transition-all duration-100 touch-manipulation animate-tile-deal
                 ${consumed
                   ? "bg-arena-900 border-rim/40 text-ink-4 opacity-40 cursor-default"
                   : isPressed
                   ? "scale-90 bg-emerald-500/30 border-emerald-400 text-emerald-200 cursor-pointer"
                   : "bg-arena-800 border-rim-hi text-white hover:bg-arena-700 active:scale-90 cursor-pointer"
                 }`}
-              style={{ animationDelay: `${i * 40}ms`, animationFillMode: "both" }}
+              style={{ animationDelay: `${i * 45}ms`, animationFillMode: "both" }}
             >
               {l}
             </button>
@@ -174,7 +176,7 @@ export default function WordInput({
           className={`flex-1 bg-arena-800 border rounded-xl px-4 py-3 text-white placeholder-ink-4
             text-base font-mono font-bold uppercase tracking-widest outline-none transition-colors min-w-0
             ${flash === "success"
-              ? "border-emerald-400 bg-emerald-500/15 text-emerald-200"
+              ? "border-emerald-400 bg-emerald-500/15 text-emerald-200 animate-submit-success"
               : flash === "error"
               ? "border-rose-400 bg-rose-500/15 animate-shake"
               : "border-rim focus:border-rim-hi"
