@@ -25,27 +25,57 @@ import type {
 } from "../src/party/protocol";
 import { WORD_SET } from "./wordlist-data";
 
-// ── JWT verification ──────────────────────────────────────────────────────
+// ── JWT verification via JWKS (supports ES256 / RS256) ───────────────────
 
-async function verifySupabaseJWT(token: string, secret: string): Promise<string | null> {
+const jwksKeys = new Map<string, CryptoKey>();
+let jwksFetchedAt = 0;
+const JWKS_TTL = 3_600_000; // refresh keys every hour
+
+async function fetchJwks(supabaseUrl: string): Promise<void> {
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/.well-known/jwks.json`);
+    if (!res.ok) return;
+    const data = await res.json() as { keys: Array<JsonWebKey & { kid: string; alg?: string; kty: string }> };
+    for (const jwk of data.keys) {
+      try {
+        let key: CryptoKey;
+        if (jwk.kty === "EC") {
+          key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+        } else if (jwk.kty === "RSA") {
+          key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+        } else { continue; }
+        jwksKeys.set(jwk.kid, key);
+      } catch { /* skip unsupported key */ }
+    }
+    jwksFetchedAt = Date.now();
+  } catch { /* network failure — keep stale cache */ }
+}
+
+async function verifySupabaseJWT(token: string, supabaseUrl: string): Promise<string | null> {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      "raw", enc.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false, ["verify"]
-    );
-    const sig = Uint8Array.from(
-      atob(parts[2].replace(/-/g, "+").replace(/_/g, "/")),
-      (c) => c.charCodeAt(0)
-    );
-    const valid = await crypto.subtle.verify("HMAC", key, sig, enc.encode(parts[0] + "." + parts[1]));
-    if (!valid) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const decode = (s: string) => atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+    const header = JSON.parse(decode(parts[0])) as { alg: string; kid?: string };
+    const payload = JSON.parse(decode(parts[1])) as { sub: string; exp: number };
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-    return payload.sub as string;
+
+    const { kid, alg } = header;
+    if (!kid) return null;
+
+    if (Date.now() - jwksFetchedAt > JWKS_TTL || !jwksKeys.has(kid)) {
+      await fetchJwks(supabaseUrl);
+    }
+    const key = jwksKeys.get(kid);
+    if (!key) return null;
+
+    const sig = Uint8Array.from(decode(parts[2]), (c) => c.charCodeAt(0));
+    const data = new TextEncoder().encode(parts[0] + "." + parts[1]);
+    const algo = alg === "RS256"
+      ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }
+      : { name: "ECDSA", hash: "SHA-256" };
+    const valid = await crypto.subtle.verify(algo, key, sig, data);
+    return valid ? payload.sub : null;
   } catch {
     return null;
   }
@@ -150,10 +180,10 @@ export default class SpellfallParty implements Party.Server {
 
     // Verify Supabase JWT if provided; gives a stable u_ prefix ID for logged-in users
     const token = url.searchParams.get("token");
-    const jwtSecret = this.room.env.SUPABASE_JWT_SECRET as string | undefined;
+    const supabaseUrl = this.room.env.SUPABASE_URL as string | undefined;
     let verifiedUserId: string | null = null;
-    if (token && jwtSecret) {
-      verifiedUserId = await verifySupabaseJWT(token, jwtSecret);
+    if (token && supabaseUrl) {
+      verifiedUserId = await verifySupabaseJWT(token, supabaseUrl);
     }
 
     const playerId = verifiedUserId
