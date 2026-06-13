@@ -24,6 +24,7 @@ export default function AbilityPicker({ selectedId, onSelect, disabled }: Props)
               key={id}
               onClick={() => !disabled && onSelect(id)}
               disabled={disabled}
+              title={ab.longDescription}
               className={`flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 border transition-all text-center touch-manipulation ${
                 selected
                   ? "border-emerald-500 bg-emerald-900/30 ring-1 ring-emerald-500/40"
@@ -40,7 +41,7 @@ export default function AbilityPicker({ selectedId, onSelect, disabled }: Props)
               >
                 {ab.name}
               </span>
-              <span className="text-slate-500 text-[10px] leading-tight line-clamp-2">
+              <span className="text-slate-500 text-[10px] leading-snug">
                 {ab.description}
               </span>
             </button>

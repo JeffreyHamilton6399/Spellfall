@@ -185,6 +185,7 @@ export default function MultiplayerShell({ partyId, name, session }: Props) {
                 humanId={humanId}
                 onSubmitWord={submitWord}
                 onUseAbility={useAbility}
+                onLeave={() => { disconnect(); window.location.assign("/"); }}
                 wordCounts={wordCounts}
                 selfEnergy={selfInfo.energy}
                 selfStatuses={selfInfo.statuses}

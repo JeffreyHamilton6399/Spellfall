@@ -26,8 +26,9 @@ import type {
 import { WORD_SET } from "./wordlist-data";
 
 const MAX_PLAYERS = 20;
-const PUBLIC_COUNTDOWN_MS = 10_000;
-const SOLO_BOT_FILL_MS = 20_000;
+const PUBLIC_COUNTDOWN_MS = 18_000;   // wait window with 2+ humans
+const SOLO_BOT_FILL_MS    = 30_000;   // solo wait before bot-fill
+const HUMAN_JOIN_EXTEND_MS = 8_000;   // minimum time left when a new human joins
 const TICK_MS = 200;
 
 function sanitizeName(raw: string): string {
@@ -381,9 +382,29 @@ export default class SpellfallParty implements Party.Server {
 
   checkAutoCountdown() {
     const state = this.engine.getState();
-    if (state.phase !== "lobby" || state.config.mode === "private" || this.countdownTimer) return;
+    if (state.phase !== "lobby" || state.config.mode === "private") return;
 
     const humans = state.playerIds.filter((id) => state.players[id].kind === "human").length;
+
+    if (this.countdownTimer) {
+      // Upgrade: solo timer running, 2nd human just joined → restart as multi-human countdown
+      if (this.lobbyCountdownEndsAt === null && humans >= 2) {
+        clearTimeout(this.countdownTimer);
+        this.countdownTimer = null;
+      // Extend: human countdown nearly over, new human joined → give them more time
+      } else if (this.lobbyCountdownEndsAt !== null && humans >= 2) {
+        const remaining = this.lobbyCountdownEndsAt - Date.now();
+        if (remaining < HUMAN_JOIN_EXTEND_MS) {
+          clearTimeout(this.countdownTimer);
+          this.countdownTimer = null;
+        } else {
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+
     const delayMs = humans >= 2 ? PUBLIC_COUNTDOWN_MS : SOLO_BOT_FILL_MS;
     this.lobbyCountdownEndsAt = humans >= 2 ? Date.now() + delayMs : null;
 
@@ -393,7 +414,7 @@ export default class SpellfallParty implements Party.Server {
       this.launchGame();
     }, delayMs);
 
-    if (humans >= 2) this.broadcastLobbyState();
+    this.broadcastLobbyState();
   }
 
   launchGame() {

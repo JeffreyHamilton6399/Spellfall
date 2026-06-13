@@ -99,7 +99,7 @@ export default function HomeScreen({ initialName }: Props) {
   /* ── Main menu ─────────────────────────────────────────────────────── */
   return (
     <>
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-7 px-4 relative">
+      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-6 px-4 relative">
 
         {/* Top-right controls */}
         <div className="absolute top-4 right-4 flex items-center gap-1">
@@ -121,69 +121,61 @@ export default function HomeScreen({ initialName }: Props) {
           </p>
         </div>
 
-        {/* ── Unified menu panel ───────────────────────────────────────── */}
         <div className="w-full max-w-xs flex flex-col gap-3">
 
-          {/* Single bordered panel containing all primary actions */}
-          <div className="bg-arena-900 border border-rim rounded-2xl overflow-hidden divide-y divide-rim/60">
+          {/* ── Primary CTA: Quick Play ──────────────────────────── */}
+          <button
+            onClick={() => go("/play")}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 active:brightness-90 rounded-2xl py-5 px-5 flex flex-col items-center gap-1 transition-colors group"
+          >
+            <div className="flex items-center gap-2.5">
+              <Zap size={20} className="text-emerald-200" />
+              <span className="font-display font-black text-2xl tracking-wide text-white">Quick Play</span>
+            </div>
+            <span className="text-emerald-200/70 text-sm">Jump into the next public match</span>
+          </button>
 
-            {/* Quick Play */}
-            <MenuRow
-              icon={<Zap size={16} />}
-              iconColor="text-emerald-400"
-              iconBg="bg-emerald-500/15"
-              label="Quick Play"
-              description="Jump into the next public match"
-              primary
-              onClick={() => go("/play")}
-            />
-
-            {/* Browse Rooms */}
-            <MenuRow
-              icon={<Globe size={16} />}
-              iconColor="text-sky-400"
-              iconBg="bg-sky-500/10"
-              label="Browse Rooms"
-              description="Pick from open public lobbies"
-              onClick={() => go("/browse")}
-            />
-
-            {/* Create Room */}
-            <MenuRow
-              icon={<Lock size={16} />}
-              iconColor="text-amber-400"
-              iconBg="bg-amber-500/10"
+          {/* ── Secondary row: Create + Browse ───────────────────── */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <SecondaryCard
+              icon={<Lock size={15} className="text-amber-400" />}
               label="Create Room"
-              description="Host a private game for friends"
+              description="Host a private game"
               onClick={() => go(`/play/${generateRoomCode()}`)}
             />
+            <SecondaryCard
+              icon={<Globe size={15} className="text-sky-400" />}
+              label="Browse Rooms"
+              description="Find open lobbies"
+              onClick={() => go("/browse")}
+            />
+          </div>
 
-            {/* Join with Code — row expands in-place */}
+          {/* ── Tertiary: Join with Code ──────────────────────────── */}
+          <div className="bg-arena-900/60 border border-rim/60 rounded-xl overflow-hidden">
             {!showJoin ? (
-              <MenuRow
-                icon={<Hash size={16} />}
-                iconColor="text-violet-400"
-                iconBg="bg-violet-500/10"
-                label="Join with Code"
-                description="Enter a SPELL-XXXX invite code"
+              <button
                 onClick={() => setShowJoin(true)}
-              />
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-arena-800/60 transition-colors group"
+              >
+                <Hash size={14} className="text-violet-400 flex-shrink-0" />
+                <span className="text-sm text-ink-3 font-medium flex-1">Join with Code</span>
+                <ChevronRight size={12} className="text-rim-hi group-hover:translate-x-0.5 transition-transform" />
+              </button>
             ) : (
-              <div className="px-4 py-3.5 flex flex-col gap-3 bg-arena-800/60">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-violet-500/10">
-                    <Hash size={14} className="text-violet-400" />
-                  </span>
-                  <span className="text-sm font-semibold text-ink">Join with Code</span>
+              <div className="px-3 py-3 flex flex-col gap-2.5">
+                <div className="flex items-center gap-2">
+                  <Hash size={13} className="text-violet-400 flex-shrink-0" />
+                  <span className="text-sm text-ink-3 font-medium flex-1">Join with Code</span>
                   <button
                     onClick={() => { setShowJoin(false); setJoinCode(""); }}
-                    className="ml-auto text-ink-4 hover:text-ink-3 transition-colors text-xs"
+                    className="text-ink-4 hover:text-ink-3 text-xs transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
                 <div className="flex gap-2">
-                  <div className="flex-1 flex items-center bg-arena-900 border border-rim focus-within:border-rim-hi rounded-xl overflow-hidden transition-colors">
+                  <div className="flex-1 flex items-center bg-arena-800 border border-rim focus-within:border-rim-hi rounded-xl overflow-hidden transition-colors">
                     <span className="pl-3 pr-0.5 text-ink-4 font-mono text-xs select-none pointer-events-none">
                       SPELL-
                     </span>
@@ -224,12 +216,12 @@ export default function HomeScreen({ initialName }: Props) {
             )}
           </div>
 
-          {/* Practice — separate, secondary weight */}
+          {/* ── Ghost link: Practice ──────────────────────────────── */}
           <button
             onClick={() => go("/practice")}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-ink-4 hover:text-ink-3 hover:bg-arena-900/60 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 text-ink-4 hover:text-ink-3 transition-colors"
           >
-            <Swords size={14} className="flex-shrink-0" />
+            <Swords size={13} />
             <span className="text-sm">Practice vs Bots</span>
           </button>
         </div>
@@ -268,48 +260,24 @@ export default function HomeScreen({ initialName }: Props) {
   );
 }
 
-/* ── Menu row — lives inside the shared panel ──────────────────────────────── */
-function MenuRow({
-  icon,
-  iconColor,
-  iconBg,
-  label,
-  description,
-  primary = false,
-  onClick,
+function SecondaryCard({
+  icon, label, description, onClick,
 }: {
   icon: React.ReactNode;
-  iconColor: string;
-  iconBg: string;
   label: string;
   description: string;
-  primary?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3.5 px-4 py-3.5 text-left transition-colors group
-        ${primary
-          ? "hover:bg-emerald-950/40"
-          : "hover:bg-arena-800/50"
-        }`}
+      className="flex flex-col items-start gap-2 bg-arena-900 border border-rim hover:border-rim-hi hover:bg-arena-800 rounded-xl px-4 py-4 text-left transition-colors group"
     >
-      <span className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-xl ${iconBg} ${iconColor}`}>
-        {icon}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className={`text-sm font-semibold leading-tight ${primary ? "text-emerald-200" : "text-ink"}`}>
-          {label}
-        </div>
-        <div className="text-xs text-ink-4 mt-0.5 truncate">{description}</div>
+      <span className="flex-shrink-0">{icon}</span>
+      <div>
+        <div className="text-sm font-semibold text-ink leading-tight">{label}</div>
+        <div className="text-xs text-ink-4 mt-0.5">{description}</div>
       </div>
-      <ChevronRight
-        size={14}
-        className={`flex-shrink-0 transition-transform group-hover:translate-x-0.5 ${
-          primary ? "text-emerald-600" : "text-rim-hi"
-        }`}
-      />
     </button>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Settings } from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
 import type { GameState, StatusEffect } from "@/engine/types";
 import { useSettings } from "@/contexts/SettingsContext";
 import PlayerList from "./PlayerList";
@@ -19,6 +19,7 @@ interface Props {
   humanId: string;
   onSubmitWord: (word: string) => void;
   onUseAbility?: (abilityId: string, targetId?: string) => void;
+  onLeave?: () => void;
   wordCounts?: Record<string, number>;
   selfEnergy?: number;
   selfStatuses?: StatusEffect[];
@@ -31,6 +32,7 @@ export default function Board({
   humanId,
   onSubmitWord,
   onUseAbility,
+  onLeave,
   wordCounts = {},
   selfEnergy,
   selfStatuses,
@@ -38,6 +40,7 @@ export default function Board({
   clockOffset = 0,
 }: Props) {
   const [showSettings, setShowSettings] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const { settings } = useSettings();
 
   const { round, phase } = state;
@@ -113,8 +116,37 @@ export default function Board({
             >
               <Settings size={16} />
             </Button>
+            {onLeave && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-8 h-8 p-0 rounded-lg text-ink-4 hover:text-rose-400 hover:border-rose-900"
+                onClick={() => setShowLeaveConfirm(true)}
+                aria-label="Leave match"
+              >
+                <LogOut size={14} />
+              </Button>
+            )}
           </div>
         </header>
+
+        {/* Leave confirm overlay */}
+        {showLeaveConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+            <div className="w-full max-w-xs bg-arena-900 border border-rim rounded-2xl p-6 flex flex-col gap-4">
+              <h3 className="font-display font-bold text-lg text-white">Leave match?</h3>
+              <p className="text-ink-3 text-sm">You&apos;ll be eliminated and can&apos;t rejoin this match.</p>
+              <div className="flex gap-2">
+                <Button variant="secondary" size="md" className="flex-1" onClick={() => setShowLeaveConfirm(false)}>
+                  Stay
+                </Button>
+                <Button variant="danger" size="md" className="flex-1" onClick={onLeave}>
+                  Leave
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Body ───────────────────────────────────────────── */}
         <div className="flex flex-1 overflow-hidden min-h-0">

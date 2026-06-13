@@ -5,6 +5,7 @@ export interface AbilityDef {
   id: string;
   name: string;
   description: string;
+  longDescription: string;
   /** Lucide icon name — rendered via AbilityIcon component */
   icon: string;
   targeting: AbilityTargeting;
@@ -15,7 +16,8 @@ export const ABILITIES: Record<string, AbilityDef> = {
   letter_snipe: {
     id: "letter_snipe",
     name: "Letter Snipe",
-    description: "Next round you get a private 8th letter no one else has.",
+    description: "Secret 8th letter next round.",
+    longDescription: "Next round you get a private 8th letter no one else has.",
     icon: "Crosshair",
     targeting: "none",
     trigger: "next-round",
@@ -23,7 +25,8 @@ export const ABILITIES: Record<string, AbilityDef> = {
   venom_word: {
     id: "venom_word",
     name: "Venom Word",
-    description: "Your next word poisons targets: 5 dmg/round for 3 rounds.",
+    description: "Poison targets for 5 dmg/round.",
+    longDescription: "Your next word poisons targets: 5 dmg/round for 3 rounds.",
     icon: "Skull",
     targeting: "none",
     trigger: "next-word",
@@ -31,7 +34,8 @@ export const ABILITIES: Record<string, AbilityDef> = {
   word_shield: {
     id: "word_shield",
     name: "Word Shield",
-    description: "Block all incoming word damage this round.",
+    description: "Block all word damage this round.",
+    longDescription: "Block all incoming word damage this round.",
     icon: "Shield",
     targeting: "none",
     trigger: "instant",
@@ -39,7 +43,8 @@ export const ABILITIES: Record<string, AbilityDef> = {
   lifeleech: {
     id: "lifeleech",
     name: "Lifeleech",
-    description: "Your next word heals you for 50% of its total damage.",
+    description: "Next word heals 50% of damage dealt.",
+    longDescription: "Your next word heals you for 50% of its total damage.",
     icon: "Droplets",
     targeting: "none",
     trigger: "next-word",
@@ -47,7 +52,8 @@ export const ABILITIES: Record<string, AbilityDef> = {
   scramble: {
     id: "scramble",
     name: "Scramble",
-    description: "Immediately reroll the shared rack. Timer continues.",
+    description: "Reroll the shared rack instantly.",
+    longDescription: "Immediately reroll the shared rack. Timer continues.",
     icon: "Shuffle",
     targeting: "none",
     trigger: "instant",
@@ -55,7 +61,8 @@ export const ABILITIES: Record<string, AbilityDef> = {
   blind: {
     id: "blind",
     name: "Blind",
-    description: "Target's rack is hidden for the first 5s of next round.",
+    description: "Hide a target's rack for 5s.",
+    longDescription: "Target's rack is hidden for the first 5s of next round.",
     icon: "EyeOff",
     targeting: "player",
     trigger: "instant",
