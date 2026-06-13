@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, BarChart2, ChevronRight, Zap, Globe, Lock, Hash, Swords } from "lucide-react";
+import { ChevronRight, Zap, Globe, Lock, Hash, Swords } from "lucide-react";
 import { unlock } from "@/lib/audio";
 import { useAuth } from "@/contexts/AuthContext";
-import SettingsModal from "./SettingsModal";
-import StatsModal from "./StatsModal";
 import ProfileCorner from "./ProfileCorner";
 import Button from "./ui/Button";
 
@@ -39,8 +37,6 @@ export default function HomeScreen({ initialName }: Props) {
   const [nameSet, setNameSet]   = useState(!!initialName);
   const [joinCode, setJoinCode] = useState("");
   const [showJoin, setShowJoin] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showStats, setShowStats]       = useState(false);
   const [showTos, setShowTos]           = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const joinRef = useRef<HTMLInputElement>(null);
@@ -114,13 +110,7 @@ export default function HomeScreen({ initialName }: Props) {
       <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-6 px-4 relative">
 
         {/* Top-right controls */}
-        <div className="absolute top-4 right-4 flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="w-9 h-9 p-0" onClick={() => setShowStats(true)} aria-label="Stats">
-            <BarChart2 size={18} />
-          </Button>
-          <Button variant="ghost" size="sm" className="w-9 h-9 p-0" onClick={() => setShowSettings(true)} aria-label="Settings">
-            <Settings size={18} />
-          </Button>
+        <div className="absolute top-4 right-4">
           <ProfileCorner />
         </div>
 
@@ -188,34 +178,29 @@ export default function HomeScreen({ initialName }: Props) {
                   </button>
                 </div>
                 <div className="flex gap-2">
-                  <div className="flex-1 flex items-center bg-arena-800 border border-rim focus-within:border-rim-hi rounded-xl overflow-hidden transition-colors">
-                    <span className="pl-3 pr-0.5 text-ink-4 font-mono text-xs select-none pointer-events-none">
-                      SPELL-
-                    </span>
-                    <input
-                      ref={joinRef}
-                      value={joinCode}
-                      onChange={(e) => {
-                        const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-                        setJoinCode(v.slice(0, 4));
-                      }}
-                      onPaste={(e) => {
-                        e.preventDefault();
-                        const raw = e.clipboardData.getData("text").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                        const stripped = raw.startsWith("SPELL") ? raw.slice(5) : raw;
-                        setJoinCode(stripped.slice(0, 4));
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && joinCode.length >= 2) go(`/play/${joinCode}`);
-                        if (e.key === "Escape") { setShowJoin(false); setJoinCode(""); }
-                      }}
-                      placeholder="XXXX"
-                      maxLength={4}
-                      className="flex-1 bg-transparent py-2.5 pr-3 text-ink placeholder-ink-4 font-mono text-sm outline-none min-w-0"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </div>
+                  <input
+                    ref={joinRef}
+                    value={joinCode}
+                    onChange={(e) => {
+                      const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      setJoinCode(v.slice(0, 4));
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const raw = e.clipboardData.getData("text").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      const stripped = raw.startsWith("SPELL") ? raw.slice(5) : raw;
+                      setJoinCode(stripped.slice(0, 4));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && joinCode.length >= 2) go(`/play/${joinCode}`);
+                      if (e.key === "Escape") { setShowJoin(false); setJoinCode(""); }
+                    }}
+                    placeholder="Enter code (e.g. 7XK4)"
+                    maxLength={4}
+                    className="flex-1 bg-arena-800 border border-rim focus:border-rim-hi rounded-xl px-3 py-2.5 text-ink placeholder-ink-4 font-mono text-sm outline-none transition-colors"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
                   <Button
                     variant="primary"
                     size="sm"
@@ -239,9 +224,6 @@ export default function HomeScreen({ initialName }: Props) {
           </button>
         </div>
       </div>
-
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      {showStats    && <StatsModal    onClose={() => setShowStats(false)}    />}
 
       {/* First-visit ToS modal */}
       {showTos && (

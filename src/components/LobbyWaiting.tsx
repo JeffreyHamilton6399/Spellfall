@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Check, Bot, Timer, Swords, Zap, Crown, X, LogOut, Globe, Settings } from "lucide-react";
+import { Copy, Check, Bot, Timer, Swords, Zap, Crown, X, LogOut, Globe, SlidersHorizontal } from "lucide-react";
 import type { LobbyPlayer } from "@/party/protocol";
 import type { ConfigPatch } from "@/party/protocol";
 import type { LobbyConfig } from "@/engine/types";
@@ -85,15 +85,15 @@ export default function LobbyWaiting({
           </button>
         </div>
 
-        {/* Gear button — top right */}
+        {/* Match settings — top right */}
         <div className="absolute top-4 right-4">
           <button
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-1.5 text-ink-4 hover:text-ink-3 text-xs font-medium transition-colors py-1.5 px-2 rounded-lg hover:bg-arena-900"
             title="Match settings"
           >
-            <Settings size={14} />
-            <span className="hidden sm:inline">Settings</span>
+            <SlidersHorizontal size={14} />
+            <span className="hidden sm:inline">Match</span>
           </button>
         </div>
 
@@ -115,7 +115,6 @@ export default function LobbyWaiting({
                 bg-arena-800 border border-rim hover:border-rim-hi rounded-xl px-5 py-2.5 transition-colors group"
               title="Click to copy invite link"
             >
-              <span className="text-slate-500">SPELL-</span>
               <span className="text-emerald-400">{roomCode}</span>
               <span className="text-slate-500 group-hover:text-emerald-400 transition-colors">
                 {copied ? <Check size={15} /> : <Copy size={15} />}

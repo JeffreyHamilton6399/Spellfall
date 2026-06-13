@@ -1,34 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Button from "@/components/ui/Button";
 
 type Mode = "signin" | "signup";
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("signin");
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<Mode>(
+    searchParams.get("mode") === "signup" ? "signup" : "signin"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resent, setResent] = useState(false);
 
-  const siteUrl =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const siteUrl = typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_SITE_URL ?? "";
+
+  const switchMode = (m: Mode) => {
+    setMode(m);
+    setError(null);
+    setUnconfirmed(false);
+    setGoogleError(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setUnconfirmed(false);
     setLoading(true);
     try {
       if (mode === "signin") {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
+        if (err) {
+          const msg = err.message.toLowerCase();
+          if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
+            setUnconfirmed(true);
+            setError("Your email isn't confirmed yet.");
+          } else if (msg.includes("invalid login") || msg.includes("invalid credentials")) {
+            setError("Incorrect email or password.");
+          } else {
+            setError(err.message);
+          }
+          return;
+        }
         router.replace("/");
       } else {
         const { error: err } = await supabase.auth.signUp({
@@ -36,12 +61,16 @@ export default function LoginPage() {
           password,
           options: { emailRedirectTo: `${siteUrl}/auth/callback` },
         });
-        if (err) throw err;
+        if (err) {
+          if (err.message.toLowerCase().includes("already registered") || err.message.toLowerCase().includes("user already")) {
+            setError("An account with this email already exists. Try signing in.");
+          } else {
+            setError(err.message);
+          }
+          return;
+        }
         setSent(true);
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      setError(msg.replace("AuthApiError: ", ""));
     } finally {
       setLoading(false);
     }
@@ -49,31 +78,59 @@ export default function LoginPage() {
 
   const handleGoogle = async () => {
     setError(null);
+    setGoogleError(false);
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${siteUrl}/auth/callback` },
     });
-    if (err) setError(err.message);
+    if (err) {
+      const msg = err.message.toLowerCase();
+      if (msg.includes("provider") || msg.includes("not enabled") || msg.includes("unsupported")) {
+        setGoogleError(true);
+      } else {
+        setError(err.message);
+      }
+    }
   };
 
+  const handleResend = async () => {
+    setResent(false);
+    await supabase.auth.resend({ type: "signup", email });
+    setResent(true);
+  };
+
+  /* ── Confirmation sent screen ────────────────────────────────────── */
   if (sent) {
     return (
       <div className="min-h-dvh bg-arena-950 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-arena-900 border border-rim rounded-2xl p-8 text-center flex flex-col gap-4">
-          <div className="text-4xl">📬</div>
-          <h2 className="font-display font-bold text-xl text-white">Check your email</h2>
-          <p className="text-ink-3 text-sm">
-            We sent a confirmation link to <span className="text-ink">{email}</span>.
-            Click it to activate your account.
-          </p>
-          <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
-            Back to home
-          </Button>
+        <div className="w-full max-w-sm bg-arena-900 border border-rim rounded-2xl p-8 flex flex-col gap-5">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-900/40 border border-emerald-700/40 flex items-center justify-center">
+              <Mail size={24} className="text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="font-display font-bold text-xl text-white">Check your email</h2>
+              <p className="text-ink-3 text-sm mt-2">
+                We sent a confirmation link to{" "}
+                <span className="text-ink font-medium">{email}</span>.
+                Click it to activate your account, then sign in.
+              </p>
+            </div>
+          </div>
+          <div className="border-t border-rim pt-4 flex flex-col gap-2">
+            <Button variant="primary" size="md" fullWidth onClick={() => router.push("/auth/login?mode=signin")}>
+              Back to sign in
+            </Button>
+            <Button variant="ghost" size="sm" fullWidth onClick={() => router.push("/")}>
+              Continue as guest
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
+  /* ── Main login/signup form ──────────────────────────────────────── */
   return (
     <div className="min-h-dvh bg-arena-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm flex flex-col gap-6">
@@ -93,14 +150,14 @@ export default function LoginPage() {
             {(["signin", "signup"] as Mode[]).map((m) => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setError(null); }}
+                onClick={() => switchMode(m)}
                 className={`py-3 text-sm font-semibold transition-colors ${
                   mode === m
-                    ? "text-white border-b-2 border-emerald-500 bg-arena-800/50"
+                    ? "text-white border-b-2 border-emerald-500 bg-arena-800/40"
                     : "text-ink-3 hover:text-ink"
                 }`}
               >
-                {m === "signin" ? "Sign in" : "Create account"}
+                {m === "signin" ? "Log in" : "Create account"}
               </button>
             ))}
           </div>
@@ -119,6 +176,12 @@ export default function LoginPage() {
               </svg>
               Continue with Google
             </button>
+
+            {googleError && (
+              <p className="text-amber-400 text-xs text-center bg-amber-950/30 border border-amber-800/30 rounded-lg px-3 py-2">
+                Google sign-in is unavailable right now. Use email instead.
+              </p>
+            )}
 
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-rim" />
@@ -149,13 +212,22 @@ export default function LoginPage() {
               />
 
               {error && (
-                <p className="text-rose-400 text-sm bg-rose-950/40 border border-rose-800/40 rounded-lg px-3 py-2">
-                  {error}
-                </p>
+                <div className="bg-rose-950/40 border border-rose-800/40 rounded-lg px-3 py-2.5 flex flex-col gap-2">
+                  <p className="text-rose-400 text-sm">{error}</p>
+                  {unconfirmed && (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      className="text-xs text-emerald-400 hover:text-emerald-300 underline text-left transition-colors"
+                    >
+                      {resent ? "Confirmation email resent" : "Resend confirmation email"}
+                    </button>
+                  )}
+                </div>
               )}
 
               <Button type="submit" variant="primary" size="md" fullWidth loading={loading}>
-                {mode === "signin" ? "Sign in" : "Create account"}
+                {mode === "signin" ? "Log in" : "Create account"}
               </Button>
             </form>
 
@@ -178,5 +250,20 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-dvh bg-arena-950 flex items-center justify-center">
+        <div className="relative w-10 h-10">
+          <div className="absolute inset-0 rounded-full border-4 border-rim" />
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-500 animate-spin-ring" />
+        </div>
+      </div>
+    }>
+      <LoginInner />
+    </Suspense>
   );
 }

@@ -118,7 +118,7 @@ function BrowseContent() {
                       )}
                     </div>
                     <p className="text-ink-4 text-[10px] mt-1 font-mono">
-                      SPELL-{lobby.id.split("_").pop()?.toUpperCase().slice(0, 4)}
+                      {lobby.id.split("_").pop()?.toUpperCase().slice(0, 4) ?? lobby.id.toUpperCase().slice(0, 4)}
                     </p>
                   </div>
                   <span className="text-ink-4 group-hover:text-emerald-400 text-sm font-semibold transition-colors">
