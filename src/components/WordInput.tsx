@@ -127,12 +127,12 @@ export default function WordInput({
               onClick={() => tapTile(l, i)}
               disabled={consumed}
               className={`w-11 h-11 flex items-center justify-center rounded-xl font-mono font-black text-xl select-none
-                border shadow-sm transition-all duration-100 touch-manipulation animate-tile-deal
+                border transition-all duration-100 touch-manipulation animate-tile-deal tile-3d
                 ${consumed
                   ? "bg-arena-900 border-rim/40 text-ink-4 opacity-40 cursor-default"
                   : isPressed
                   ? "scale-90 bg-emerald-500/30 border-emerald-400 text-emerald-200 cursor-pointer"
-                  : "bg-arena-800 border-rim-hi text-white hover:bg-arena-700 active:scale-90 cursor-pointer"
+                  : "bg-arena-800 border-rim-hi text-white hover:bg-arena-700 hover:brightness-110 active:scale-90 cursor-pointer"
                 }`}
               style={{ animationDelay: `${i * 45}ms`, animationFillMode: "both" }}
             >

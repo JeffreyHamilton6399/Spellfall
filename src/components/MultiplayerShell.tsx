@@ -12,17 +12,21 @@ import { playRoundStart } from "@/lib/audio";
 import Button from "./ui/Button";
 
 /* ── Pre-game countdown (3-2-1) ──────────────────────────────────────────── */
-function CountdownDisplay({ endsAt }: { endsAt: number }) {
-  const [secs, setSecs] = useState(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
+function CountdownDisplay({ endsAt, clockOffset = 0 }: { endsAt: number; clockOffset?: number }) {
+  const remaining = () => Math.max(0, Math.ceil((endsAt - Date.now() - clockOffset) / 1000));
+  const [secs, setSecs] = useState(remaining);
+  // Capture the initial total once at mount so the ring sweeps linearly 1→0
+  const totalRef = useRef(Math.max(1, remaining()));
+
   useEffect(() => {
-    const id = setInterval(() => setSecs(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))), 200);
+    const id = setInterval(() => setSecs(remaining()), 200);
     return () => clearInterval(id);
-  }, [endsAt]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endsAt, clockOffset]);
 
   const R = 38;
   const C = 2 * Math.PI * R;
-  const total   = Math.max(1, Math.ceil((endsAt - Date.now()) / 1000) + 1);
-  const fraction = secs / total;
+  const fraction = secs / totalRef.current;
   const offset  = C * (1 - fraction);
 
   return (
@@ -187,7 +191,7 @@ export default function MultiplayerShell({ partyId, name, session, isRanked, onG
       {(phase.status === "in_game" || phase.status === "lobby") && gameState !== null && (
         <>
           {gameState.phase === "countdown" && (
-            <CountdownDisplay endsAt={gameState.countdownEndsAt ?? Date.now()} />
+            <CountdownDisplay endsAt={gameState.countdownEndsAt ?? Date.now()} clockOffset={clockOffset} />
           )}
 
           {(gameState.phase === "playing" || gameState.phase === "sudden_death") && (

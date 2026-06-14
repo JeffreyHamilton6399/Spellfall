@@ -178,6 +178,38 @@ body {
 }
 .animate-sd-flash { animation: sd-flash 0.7s ease-out forwards; }
 
+/* ─── Background floating letter tiles ───────────────────────────────── */
+@keyframes float-tile-a {
+  0%, 100% { transform: translateY(0)     rotate(0deg);  }
+  33%      { transform: translateY(-20px) rotate(5deg);  }
+  66%      { transform: translateY(10px)  rotate(-3deg); }
+}
+@keyframes float-tile-b {
+  0%, 100% { transform: translateY(0)     rotate(0deg);  }
+  40%      { transform: translateY(14px)  rotate(-6deg); }
+  75%      { transform: translateY(-18px) rotate(4deg);  }
+}
+@keyframes float-tile-c {
+  0%, 100% { transform: translateY(0)     rotate(0deg); }
+  25%      { transform: translateY(-12px) rotate(3deg); }
+  60%      { transform: translateY(16px)  rotate(-4deg); }
+  80%      { transform: translateY(-6px)  rotate(2deg);  }
+}
+
+/* ─── Menu entrance slide ─────────────────────────────────────────────── */
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in-up {
+  animation: slide-in-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Physical tile depth ─────────────────────────────────────────────── */
+.tile-3d {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
 /* ─── Reduced motion ─────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
@@ -189,10 +221,14 @@ body {
   .animate-pulse,
   .animate-submit-success,
   .animate-zone-flash,
-  .animate-sd-flash {
+  .animate-sd-flash,
+  .animate-slide-in-up {
     animation: none !important;
     transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
+  .float-letters-root { display: none !important; }
 }
 
 [data-reduced-motion="true"] .animate-shake,
@@ -204,10 +240,14 @@ body {
 [data-reduced-motion="true"] .animate-pulse,
 [data-reduced-motion="true"] .animate-submit-success,
 [data-reduced-motion="true"] .animate-zone-flash,
-[data-reduced-motion="true"] .animate-sd-flash {
+[data-reduced-motion="true"] .animate-sd-flash,
+[data-reduced-motion="true"] .animate-slide-in-up {
   animation: none !important;
   transition-duration: 50ms !important;
+  opacity: 1 !important;
+  transform: none !important;
 }
+[data-reduced-motion="true"] .float-letters-root { display: none !important; }
 
 /* ─── Mobile viewport fix ─────────────────────────────────────────────── */
 .h-dvh { height: 100dvh; }

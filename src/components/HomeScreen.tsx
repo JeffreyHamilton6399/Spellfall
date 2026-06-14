@@ -7,6 +7,7 @@ import { unlock } from "@/lib/audio";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileCorner from "./ProfileCorner";
 import RankedBadge from "./RankedBadge";
+import FloatingLetters from "./FloatingLetters";
 import Button from "./ui/Button";
 
 const TOS_KEY = "spellfall_terms_v1";
@@ -72,35 +73,39 @@ export default function HomeScreen({ initialName }: Props) {
   /* ── Name entry screen ─────────────────────────────────────────────── */
   if (!nameSet) {
     return (
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-8 px-4">
-        <div className="text-center">
-          <h1 className="font-display font-black text-7xl tracking-wide text-white leading-none">
-            SPELL<span className="text-emerald-400">FALL</span>
-          </h1>
-          <p className="mt-2 text-ink-3 text-sm">Enter a name to play</p>
+      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-8 px-4 relative">
+        <FloatingLetters />
+        <div className="relative z-[1] flex flex-col items-center gap-8 w-full">
+          <div className="text-center animate-slide-in-up" style={{ animationDelay: "0ms" }}>
+            <h1 className="font-display font-black text-7xl tracking-wide text-white leading-none">
+              SPELL<span className="text-emerald-400">FALL</span>
+            </h1>
+            <p className="mt-2 text-ink-3 text-sm">Enter a name to play</p>
+          </div>
+          <div className="flex gap-2 w-full max-w-xs animate-slide-in-up" style={{ animationDelay: "80ms" }}>
+            <input
+              ref={nameRef}
+              value={name}
+              onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z0-9_\s\-]/g, ""))}
+              onKeyDown={(e) => e.key === "Enter" && saveName()}
+              maxLength={20}
+              placeholder="Your name…"
+              className="flex-1 bg-arena-800 border border-rim focus:border-rim-hi rounded-xl px-4 py-3.5 text-ink placeholder-ink-4 text-base font-semibold outline-none transition-colors"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <Button variant="primary" size="lg" onClick={saveName} aria-label="Continue">
+              <ChevronRight size={20} />
+            </Button>
+          </div>
+          <button
+            onClick={() => router.push("/auth/login")}
+            className="text-ink-4 hover:text-ink-3 text-xs transition-colors animate-slide-in-up"
+            style={{ animationDelay: "140ms" }}
+          >
+            Have an account? Sign in
+          </button>
         </div>
-        <div className="flex gap-2 w-full max-w-xs">
-          <input
-            ref={nameRef}
-            value={name}
-            onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z0-9_\s\-]/g, ""))}
-            onKeyDown={(e) => e.key === "Enter" && saveName()}
-            maxLength={20}
-            placeholder="Your name…"
-            className="flex-1 bg-arena-800 border border-rim focus:border-rim-hi rounded-xl px-4 py-3.5 text-ink placeholder-ink-4 text-base font-semibold outline-none transition-colors"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <Button variant="primary" size="lg" onClick={saveName} aria-label="Continue">
-            <ChevronRight size={20} />
-          </Button>
-        </div>
-        <button
-          onClick={() => router.push("/auth/login")}
-          className="text-ink-4 hover:text-ink-3 text-xs transition-colors"
-        >
-          Have an account? Sign in
-        </button>
       </div>
     );
   }
@@ -108,7 +113,8 @@ export default function HomeScreen({ initialName }: Props) {
   /* ── Main menu ─────────────────────────────────────────────────────── */
   return (
     <>
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-6 px-4 relative">
+      <FloatingLetters />
+      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-6 px-4 relative z-[1]">
 
         {/* Top-right controls */}
         <div className="absolute top-4 right-4">
@@ -116,7 +122,7 @@ export default function HomeScreen({ initialName }: Props) {
         </div>
 
         {/* Logo */}
-        <div className="text-center">
+        <div className="text-center animate-slide-in-up" style={{ animationDelay: "0ms" }}>
           <h1 className="font-display font-black text-7xl tracking-wide text-white leading-none">
             SPELL<span className="text-emerald-400">FALL</span>
           </h1>
@@ -125,7 +131,7 @@ export default function HomeScreen({ initialName }: Props) {
           </p>
         </div>
 
-        <div className="w-full max-w-xs flex flex-col gap-3">
+        <div className="w-full max-w-xs flex flex-col gap-3 animate-slide-in-up" style={{ animationDelay: "90ms" }}>
 
           {/* ── Primary CTA: Quick Play ──────────────────────────── */}
           <button

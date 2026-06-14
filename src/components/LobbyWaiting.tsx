@@ -6,6 +6,7 @@ import type { LobbyPlayer } from "@/party/protocol";
 import type { ConfigPatch } from "@/party/protocol";
 import type { LobbyConfig } from "@/engine/types";
 import AbilityPicker from "./AbilityPicker";
+import FloatingLetters from "./FloatingLetters";
 import Button from "./ui/Button";
 
 interface Props {
@@ -72,7 +73,8 @@ export default function LobbyWaiting({
 
   return (
     <>
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center px-4 py-8 gap-6 relative">
+      <FloatingLetters />
+      <div className="min-h-dvh bg-arena-950 flex flex-col items-center px-4 py-8 gap-6 relative z-[1]">
 
         {/* Leave button — top left */}
         <div className="absolute top-4 left-4">

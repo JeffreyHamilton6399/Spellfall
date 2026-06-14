@@ -9,6 +9,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import StatsModal from "./StatsModal";
 import RankedBadge from "./RankedBadge";
+import FloatingLetters from "./FloatingLetters";
 import Button from "./ui/Button";
 import type { RankedResult } from "@/party/protocol";
 import { PLACEMENT_MATCHES_REQUIRED } from "@/lib/tiers";
@@ -140,7 +141,8 @@ export default function EndScreen({ state, humanId, isHost, isRanked, rankedResu
 
   return (
     <>
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center px-4 py-12">
+      <FloatingLetters />
+      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center px-4 py-12 relative z-[1]">
         <div
           className={`w-full max-w-md flex flex-col items-center gap-6 transition-all duration-500 ${
             visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"

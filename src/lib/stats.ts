@@ -103,7 +103,7 @@ export async function migrateLocalStatsToSupabase(userId: string): Promise<void>
       .from("player_stats")
       .select("matches_played, wins, total_eliminations, best_word, best_word_score, pangrams")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     const serverMatches = (existing as { matches_played?: number } | null)?.matches_played ?? 0;
     if (serverMatches >= local.matches) return;
@@ -137,7 +137,7 @@ export async function syncMatchToSupabase(userId: string, result: MatchResult): 
       .from("player_stats")
       .select("matches_played, wins, total_eliminations, best_word, best_word_score, pangrams")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     const row = current as {
       matches_played?: number; wins?: number; total_eliminations?: number;

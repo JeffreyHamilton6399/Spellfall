@@ -467,7 +467,9 @@ export default class SpellfallParty implements Party.Server {
       this.stopTick();
       if (this.isRanked && !this.rankedResultsRecorded) {
         this.rankedResultsRecorded = true;
-        this.recordRankedResults().catch(() => {});
+        this.recordRankedResults().catch((err: unknown) => {
+          console.error("[ranked] recordRankedResults threw unexpectedly:", err);
+        });
       }
     }
   }
@@ -853,7 +855,14 @@ export default class SpellfallParty implements Party.Server {
   async recordRankedResults(): Promise<void> {
     const supabaseUrl = this.room.env.SUPABASE_URL as string | undefined;
     const serviceKey  = this.room.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
-    if (!supabaseUrl || !serviceKey) return;
+    if (!supabaseUrl) {
+      console.error("[ranked] SUPABASE_URL not set — ranked results cannot be saved");
+      return;
+    }
+    if (!serviceKey) {
+      console.error("[ranked] SUPABASE_SERVICE_ROLE_KEY not set — ranked results cannot be saved");
+      return;
+    }
 
     const state = this.engine.getState();
 
@@ -892,7 +901,11 @@ export default class SpellfallParty implements Party.Server {
       `${supabaseUrl}/rest/v1/profiles?id=in.(${userIdList})&select=id,rating,ranked_matches_played`,
       { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
     );
-    if (!ratingsRes.ok) return;
+    if (!ratingsRes.ok) {
+      const body = await ratingsRes.text().catch(() => "(no body)");
+      console.error(`[ranked] ratings fetch failed: ${ratingsRes.status} ${body}`);
+      return;
+    }
 
     const ratingsData = await ratingsRes.json() as Array<{
       id: string; rating: number; ranked_matches_played: number;
@@ -925,6 +938,7 @@ export default class SpellfallParty implements Party.Server {
     });
 
     // Write to Supabase with retry
+    let rpcSucceeded = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/record_ranked_match`, {
@@ -940,11 +954,21 @@ export default class SpellfallParty implements Party.Server {
             p_players:     payload.map(({ matches_so_far: _, ...rest }) => rest),
           }),
         });
-        if (rpcRes.ok) break;
+        if (rpcRes.ok) {
+          rpcSucceeded = true;
+          console.log(`[ranked] record_ranked_match succeeded (attempt ${attempt + 1})`);
+          break;
+        }
+        const errBody = await rpcRes.text().catch(() => "(no body)");
+        console.error(`[ranked] RPC attempt ${attempt + 1} failed: ${rpcRes.status} ${errBody}`);
         if (attempt < 2) await new Promise<void>((r) => setTimeout(r, 2000 * (attempt + 1)));
-      } catch {
+      } catch (err) {
+        console.error(`[ranked] RPC attempt ${attempt + 1} threw:`, err);
         if (attempt < 2) await new Promise<void>((r) => setTimeout(r, 2000 * (attempt + 1)));
       }
+    }
+    if (!rpcSucceeded) {
+      console.error("[ranked] all 3 RPC attempts failed — rated results NOT saved for room", this.room.id);
     }
 
     // Send RANKED_RESULT to each still-connected session
