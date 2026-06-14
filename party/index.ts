@@ -216,27 +216,33 @@ export default class SpellfallParty implements Party.Server {
 
     // Verify Supabase JWT if provided; gives a stable u_ prefix ID for logged-in users
     const token = url.searchParams.get("token");
-    const supabaseUrl = this.room.env.SUPABASE_URL as string | undefined;
+    const supabaseUrl = (this.room.env.SUPABASE_URL ?? this.room.env.NEXT_PUBLIC_SUPABASE_URL) as string | undefined;
     const serviceKey = this.room.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
     let verifiedUserId: string | null = null;
+
+    // Log env availability so auth failures are diagnosable in PartyKit logs
+    console.log(`[auth] env: SUPABASE_URL=${!!supabaseUrl} SERVICE_KEY=${!!serviceKey} token=${!!token} room=${this.room.id}`);
 
     if (token && supabaseUrl) {
       // Try JWKS (RS256/ES256) first; falls back to REST API for HS256 tokens (no kid header)
       verifiedUserId = await verifySupabaseJWT(token, supabaseUrl);
+      console.log(`[auth] JWKS result: ${verifiedUserId ?? "null"}`);
       if (!verifiedUserId && serviceKey) {
         verifiedUserId = await verifyTokenViaApi(token, supabaseUrl, serviceKey);
-        if (verifiedUserId) {
-          console.log(`[auth] JWKS failed, REST API verified user ${verifiedUserId}`);
-        }
+        console.log(`[auth] REST API result: ${verifiedUserId ?? "null"}`);
       }
       if (!verifiedUserId) {
-        console.warn(`[auth] token present but verification failed (JWKS + API both returned null)`);
+        console.warn(`[auth] token present but ALL verification failed — check token format/expiry`);
       }
+    } else if (token && !supabaseUrl) {
+      console.error(`[auth] SUPABASE_URL missing from env — cannot verify token`);
+    } else if (!token) {
+      console.log(`[auth] no token provided (guest connection)`);
     }
 
     // Ranked mode requires a verified account
     if (this.isRanked) {
-      console.log(`[ranked] join: room=${this.room.id} token=${!!token} userId=${verifiedUserId ?? "null"}`);
+      console.log(`[ranked] gate: verifiedUserId=${verifiedUserId ?? "REJECTED"}`);
       if (!verifiedUserId) {
         const msg: ServerMsg = {
           type: "ERROR",

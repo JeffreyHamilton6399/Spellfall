@@ -70,6 +70,7 @@ export default function GameShell() {
     return (
       <Lobby
         onPlay={handlePlay}
+        onLeave={() => window.location.assign("/")}
         abilityPicker={
           <AbilityPicker selectedId={selectedAbility} onSelect={setSelectedAbility} />
         }

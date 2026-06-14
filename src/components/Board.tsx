@@ -118,9 +118,6 @@ export default function Board({
     [state.playerIds, state.players]
   );
 
-  const hasKillFeed = settings.showKillFeed &&
-    (state.killFeed.length > 0 || (state.abilityFeed?.length ?? 0) > 0);
-
   return (
     <>
       {/* HP-drop screen-edge flash */}
@@ -226,11 +223,6 @@ export default function Board({
               </span>
               <span className="text-[10px] text-ink-4 font-mono">{aliveCount} left</span>
             </div>
-            {hasKillFeed && (
-              <div className="border-b border-rim/60 p-2 max-h-32 overflow-hidden">
-                <KillFeed killFeed={state.killFeed} abilityFeed={state.abilityFeed} />
-              </div>
-            )}
             <div className="flex-1 p-2 overflow-y-auto min-h-0">
               <PlayerList state={state} humanId={humanId} wordCounts={wordCounts} />
             </div>
@@ -349,6 +341,13 @@ export default function Board({
           )}
         </div>
       </div>
+
+      {/* Kill/ability feed — fixed bottom-right toast overlay */}
+      {settings.showKillFeed && (
+        <div className="fixed bottom-4 right-4 z-20 pointer-events-none flex flex-col items-end gap-1 max-w-[280px]">
+          <KillFeed killFeed={state.killFeed} abilityFeed={state.abilityFeed} />
+        </div>
+      )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </>

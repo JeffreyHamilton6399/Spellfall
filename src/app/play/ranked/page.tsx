@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import MultiplayerShell from "@/components/MultiplayerShell";
 import Button from "@/components/ui/Button";
@@ -16,7 +17,6 @@ function Spinner() {
       <span className="font-display font-black text-2xl tracking-wide text-ink-4">
         SPELL<span className="text-emerald-900">FALL</span>
       </span>
-      <span className="text-ink-4 text-sm">Finding a ranked match…</span>
     </div>
   );
 }
@@ -61,7 +61,25 @@ function RankedQueue() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user]);
 
-  if (loading || (!roomId && !error)) return <Spinner />;
+  if (loading) return <Spinner />;
+
+  if (!roomId && !error) {
+    return (
+      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-5 relative">
+        <div className="absolute top-4 left-4">
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center gap-1.5 text-ink-4 hover:text-ink-3 text-xs font-medium transition-colors py-1.5 px-2 rounded-lg hover:bg-arena-900"
+          >
+            <ArrowLeft size={13} />
+            Home
+          </button>
+        </div>
+        <Spinner />
+        <span className="text-ink-4 text-sm">Finding a ranked match…</span>
+      </div>
+    );
+  }
 
   if (error) {
     return (

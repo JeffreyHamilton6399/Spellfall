@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Swords, Shield, TrendingDown, Sparkles, Skull, Zap } from "lucide-react";
+import { Swords, TrendingDown, Sparkles, Skull, Zap, ArrowLeft } from "lucide-react";
 
 interface TipItem {
   icon: ReactNode;
@@ -19,12 +19,24 @@ const TIPS: TipItem[] = [
 
 interface Props {
   onPlay: () => void;
+  onLeave?: () => void;
   abilityPicker?: ReactNode;
 }
 
-export default function Lobby({ onPlay, abilityPicker }: Props) {
+export default function Lobby({ onPlay, onLeave, abilityPicker }: Props) {
   return (
-    <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-8 px-4 py-10">
+    <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-8 px-4 py-10 relative">
+      {onLeave && (
+        <div className="absolute top-4 left-4">
+          <button
+            onClick={onLeave}
+            className="flex items-center gap-1.5 text-ink-4 hover:text-ink-3 text-xs font-medium transition-colors py-1.5 px-2 rounded-lg hover:bg-arena-900"
+          >
+            <ArrowLeft size={13} />
+            Home
+          </button>
+        </div>
+      )}
       <div className="text-center">
         <h1 className="font-display font-black text-7xl tracking-wide text-white leading-none">
           SPELL<span className="text-emerald-400">FALL</span>

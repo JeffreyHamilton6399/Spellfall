@@ -9,8 +9,8 @@ import { useSettings } from "@/contexts/SettingsContext";
 import AbilityIcon from "./AbilityIcon";
 
 type FeedItem =
-  | { kind: "kill";    ev: KillEvent;    id: number }
-  | { kind: "ability"; ev: AbilityEvent; id: number };
+  | { kind: "kill";    ev: KillEvent;    id: number; addedAt: number }
+  | { kind: "ability"; ev: AbilityEvent; id: number; addedAt: number };
 
 interface Props {
   killFeed: KillEvent[];
@@ -26,19 +26,28 @@ function KillFeedInner({ killFeed, abilityFeed = [] }: Props) {
   const killLenRef    = useRef(0);
   const abilityLenRef = useRef(0);
 
+  // Auto-dismiss expired items every second
   useEffect(() => {
+    const id = setInterval(() => {
+      setVisible((prev) => prev.filter((item) => Date.now() - item.addedAt < 5000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const now = Date.now();
     const newItems: FeedItem[] = [];
 
     if (killFeed.length > killLenRef.current) {
       killFeed.slice(killLenRef.current).forEach((ev) =>
-        newItems.push({ kind: "kill", ev, id: ++itemId })
+        newItems.push({ kind: "kill", ev, id: ++itemId, addedAt: now })
       );
       killLenRef.current = killFeed.length;
     }
 
     if (abilityFeed.length > abilityLenRef.current) {
       abilityFeed.slice(abilityLenRef.current).forEach((ev) =>
-        newItems.push({ kind: "ability", ev, id: ++itemId })
+        newItems.push({ kind: "ability", ev, id: ++itemId, addedAt: now })
       );
       abilityLenRef.current = abilityFeed.length;
     }

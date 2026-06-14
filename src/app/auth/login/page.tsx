@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Mail } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Button from "@/components/ui/Button";
 
@@ -133,7 +133,16 @@ function LoginInner() {
 
   /* ── Main login/signup form ──────────────────────────────────────── */
   return (
-    <div className="min-h-dvh bg-arena-950 flex items-center justify-center px-4">
+    <div className="min-h-dvh bg-arena-950 flex items-center justify-center px-4 relative">
+      <div className="absolute top-4 left-4">
+        <button
+          onClick={() => router.push("/")}
+          className="flex items-center gap-1.5 text-ink-4 hover:text-ink-3 text-xs font-medium transition-colors py-1.5 px-2 rounded-lg hover:bg-arena-900"
+        >
+          <ArrowLeft size={13} />
+          Home
+        </button>
+      </div>
       <div className="w-full max-w-sm flex flex-col gap-6">
         {/* Logo */}
         <div className="text-center">
