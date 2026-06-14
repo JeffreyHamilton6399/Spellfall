@@ -80,19 +80,18 @@ export default function Board({
     prevHpRef.current = hp;
   }, [human?.hp, human?.isAlive]);
 
-  // Low-HP heartbeat
+  // Low-HP heartbeat — fires only on the boundary transition, not every HP change
+  const lowHp = !!(human?.isAlive && (human?.hp ?? 100) <= 30);
   useEffect(() => {
-    const lowHp = !!(human?.isAlive && (human?.hp ?? 100) <= 30);
     if (lowHp) {
-      if (!heartbeatRef.current) {
-        playLowHpTick();
-        heartbeatRef.current = setInterval(playLowHpTick, 1200);
-      }
+      playLowHpTick();
+      heartbeatRef.current = setInterval(playLowHpTick, 1200);
     } else {
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
     }
     return () => { if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; } };
-  }, [human?.hp, human?.isAlive]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lowHp]);
   const { settings } = useSettings();
 
   const energy         = selfEnergy   ?? human?.energy         ?? 0;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Zap, Globe, Lock, Hash, Swords, Trophy } from "lucide-react";
+import { ChevronRight, Zap, Globe, Lock, Hash, Swords, Trophy, Settings } from "lucide-react";
 import { unlock } from "@/lib/audio";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileCorner from "./ProfileCorner";
@@ -51,6 +51,15 @@ export default function HomeScreen({ initialName }: Props) {
       setShowTos(true);
     }
   }, []);
+
+  // Auto-populate name from profile for signed-in users
+  useEffect(() => {
+    if (profile?.display_name && !nameSet) {
+      setName(profile.display_name);
+      setNameSet(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.display_name]);
 
   const saveName = () => {
     const n = name.replace(/[^a-zA-Z0-9_\s\-]/g, "").trim().slice(0, 20);
@@ -119,6 +128,18 @@ export default function HomeScreen({ initialName }: Props) {
         {/* Top-right controls */}
         <div className="absolute top-4 right-4">
           <ProfileCorner />
+        </div>
+
+        {/* App settings — bottom-left corner */}
+        <div className="absolute bottom-4 left-4">
+          <button
+            onClick={() => router.push("/settings")}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-4 hover:text-ink-3 hover:bg-arena-900 transition-colors"
+            aria-label="App Settings"
+            title="Settings"
+          >
+            <Settings size={16} />
+          </button>
         </div>
 
         {/* Logo */}

@@ -8,6 +8,10 @@ import {
   Shuffle,
   EyeOff,
   Zap,
+  TrendingDown,
+  Snowflake,
+  Wind,
+  ArrowLeftRight,
   type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -20,6 +24,10 @@ const ICON_MAP: Record<string, FC<LucideProps>> = {
   Shuffle,
   EyeOff,
   Zap,
+  TrendingDown,
+  Snowflake,
+  Wind,
+  ArrowLeftRight,
 };
 
 interface Props extends LucideProps {

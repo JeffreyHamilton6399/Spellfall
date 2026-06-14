@@ -75,16 +75,18 @@ function nanoid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function tickStatuses(statuses: StatusEffect[]): StatusEffect[] {
+function tickStatuses(statuses: StatusEffect[], now: number): StatusEffect[] {
   return statuses
     .map((s): StatusEffect => {
       if (s.type === "POISON") return { ...s, roundsLeft: s.roundsLeft - 1 };
       if (s.type === "SHIELD") return { ...s, roundsLeft: s.roundsLeft - 1 };
+      if (s.type === "REFLECT") return { ...s, roundsLeft: s.roundsLeft - 1 };
       return s;
     })
     .filter((s) => {
-      if (s.type === "POISON" || s.type === "SHIELD") return s.roundsLeft > 0;
-      return true; // BLIND, BLIND_PENDING, SNIPE_PENDING, LIFELEECH, VENOM persist until consumed
+      if (s.type === "POISON" || s.type === "SHIELD" || s.type === "REFLECT") return s.roundsLeft > 0;
+      if (s.type === "BLIND" || s.type === "FREEZE") return s.endsAt > now;
+      return true; // BLIND_PENDING, SNIPE_PENDING, FREEZE_PENDING, LIFELEECH, VENOM, DOUBLE_TAP persist until consumed
     });
 }
 
@@ -184,6 +186,14 @@ function startRound(state: GameState, now: number, dictionary: Set<string>): Gam
       ];
     }
 
+    // FREEZE_PENDING → FREEZE with timestamp
+    if (statuses.some((s) => s.type === "FREEZE_PENDING")) {
+      statuses = [
+        ...statuses.filter((s) => s.type !== "FREEZE_PENDING"),
+        { type: "FREEZE", endsAt: now + BALANCE.freeze.durationMs },
+      ];
+    }
+
     players[pid] = { ...p, statuses, privateLetters };
   }
 
@@ -224,8 +234,10 @@ function resolveRound(state: GameState, now: number, dictionary: Set<string>): G
       const calc = calculateWordDamage(word, rack, i);
       const isVenom = tagged[word] === "venom";
       const isLeech = tagged[word] === "leech";
+      const isDouble = tagged[word] === "double";
+      const finalDamage = isDouble ? calc.finalDamage * 2 : calc.finalDamage;
       const leechHeal = isLeech
-        ? calc.finalDamage * targets.length * BALANCE.lifeleech.healFraction
+        ? finalDamage * targets.length * BALANCE.lifeleech.healFraction
         : 0;
 
       const sw: ScoredWord = {
@@ -233,13 +245,14 @@ function resolveRound(state: GameState, now: number, dictionary: Set<string>): G
         baseScore: calc.baseScore,
         lengthMultiplier: calc.lengthMultiplier,
         decayMultiplier: calc.decayMultiplier,
-        finalDamage: calc.finalDamage,
+        finalDamage,
         targetIds: targets,
         isPangram: calc.isPangram,
         heal: calc.heal,
         isVenom,
         isLeech,
         leechHeal,
+        isDouble,
       };
       scored.push(sw);
       totalHeal += calc.heal;
@@ -351,6 +364,25 @@ function resolveRound(state: GameState, now: number, dictionary: Set<string>): G
     }
   }
 
+  // REFLECT — bounce a fraction of incoming damage back to attackers
+  for (const [targetId, attackers] of Object.entries(damageToPlayer)) {
+    const target = players[targetId];
+    if (!target?.isAlive) continue;
+    const hasReflect = target.statuses.some((s) => s.type === "REFLECT");
+    if (!hasReflect) continue;
+    for (const [attackerId, damage] of Object.entries(attackers)) {
+      const reflectDmg = Math.floor(damage * BALANCE.reflect.fraction);
+      if (reflectDmg <= 0) continue;
+      const attacker = players[attackerId];
+      if (!attacker?.isAlive) continue;
+      players[attackerId] = { ...attacker, hp: attacker.hp - reflectDmg };
+      // Track for kill attribution
+      if (!damageToPlayer[attackerId]) damageToPlayer[attackerId] = {};
+      damageToPlayer[attackerId][targetId] =
+        (damageToPlayer[attackerId][targetId] ?? 0) + reflectDmg;
+    }
+  }
+
   // Energy gain from damage taken (comeback mechanic)
   for (const pid of aliveIds) {
     const damageTaken = Object.values(damageToPlayer[pid] ?? {}).reduce((s, d) => s + d, 0);
@@ -360,6 +392,19 @@ function resolveRound(state: GameState, now: number, dictionary: Set<string>): G
         players[pid] = {
           ...p,
           energy: Math.min(BALANCE.energy.maxEnergy, p.energy + damageTaken * BALANCE.energy.gainPerDamageTaken),
+        };
+      }
+    }
+  }
+
+  // Passive energy per round for all alive players
+  if (BALANCE.energy.gainPerRound > 0) {
+    for (const pid of aliveIds) {
+      const p = players[pid];
+      if (p) {
+        players[pid] = {
+          ...p,
+          energy: Math.min(BALANCE.energy.maxEnergy, p.energy + BALANCE.energy.gainPerRound),
         };
       }
     }
@@ -380,7 +425,7 @@ function resolveRound(state: GameState, now: number, dictionary: Set<string>): G
   // Tick statuses on all players
   for (const pid of Object.keys(players)) {
     const p = players[pid];
-    players[pid] = { ...p, statuses: tickStatuses(p.statuses) };
+    players[pid] = { ...p, statuses: tickStatuses(p.statuses, now) };
   }
 
   // Detect eliminations
@@ -507,6 +552,45 @@ function applyAbility(
       }
       break;
     }
+    case "double_tap": {
+      players[playerId] = addStatus(players[playerId], { type: "DOUBLE_TAP" });
+      break;
+    }
+    case "energy_steal": {
+      if (targetId && players[targetId]) {
+        const target = players[targetId];
+        const stolen = Math.floor(target.energy * BALANCE.energy_steal.drainFraction);
+        const selfGain = Math.min(BALANCE.energy_steal.selfGainCap, stolen);
+        players[targetId] = { ...target, energy: target.energy - stolen };
+        players[playerId] = {
+          ...players[playerId],
+          energy: Math.min(BALANCE.energy.maxEnergy, players[playerId].energy + selfGain),
+        };
+      }
+      break;
+    }
+    case "freeze": {
+      if (targetId) {
+        players[targetId] = addStatus(players[targetId], { type: "FREEZE_PENDING" });
+      }
+      break;
+    }
+    case "cleanse": {
+      const negativeTypes = new Set(["POISON", "BLIND", "BLIND_PENDING", "FREEZE", "FREEZE_PENDING"]);
+      players[playerId] = {
+        ...players[playerId],
+        statuses: players[playerId].statuses.filter((s) => !negativeTypes.has(s.type)),
+        hp: Math.min(MAX_HP, players[playerId].hp + BALANCE.cleanse.healAmount),
+      };
+      break;
+    }
+    case "reflect": {
+      players[playerId] = addStatus(players[playerId], {
+        type: "REFLECT",
+        roundsLeft: BALANCE.reflect.durationRounds,
+      });
+      break;
+    }
   }
 
   const abilityEvent: AbilityEvent = {
@@ -583,6 +667,11 @@ function reduce(
       const player = state.players[event.playerId];
       if (!player?.isAlive) return state;
 
+      // FREEZE check — can't submit until endsAt
+      const freeze = player.statuses.find((s) => s.type === "FREEZE") as
+        | { type: "FREEZE"; endsAt: number } | undefined;
+      if (freeze && event.timestamp < freeze.endsAt) return state;
+
       const word = event.word.toUpperCase().trim();
       if (word.length < 2) return state;
       if (!isValidWord(word, dictionary)) return state;
@@ -595,11 +684,12 @@ function reduce(
       const roundSubs = state.round.submittedWords[event.playerId] ?? [];
       if (roundSubs.includes(word)) return state;
 
-      // Consume VENOM / LIFELEECH on submission
+      // Consume VENOM / LIFELEECH / DOUBLE_TAP on submission
       let newStatuses = player.statuses;
       let taggedWords = state.round.taggedWords;
       const hasVenom = newStatuses.some((s) => s.type === "VENOM");
       const hasLeech = newStatuses.some((s) => s.type === "LIFELEECH");
+      const hasDouble = newStatuses.some((s) => s.type === "DOUBLE_TAP");
 
       if (hasVenom) {
         newStatuses = newStatuses.filter((s) => s.type !== "VENOM");
@@ -609,6 +699,11 @@ function reduce(
       if (hasLeech) {
         newStatuses = newStatuses.filter((s) => s.type !== "LIFELEECH");
         const playerTags = { ...(taggedWords[event.playerId] ?? {}), [word]: "leech" as const };
+        taggedWords = { ...taggedWords, [event.playerId]: playerTags };
+      }
+      if (hasDouble) {
+        newStatuses = newStatuses.filter((s) => s.type !== "DOUBLE_TAP");
+        const playerTags = { ...(taggedWords[event.playerId] ?? {}), [word]: "double" as const };
         taggedWords = { ...taggedWords, [event.playerId]: playerTags };
       }
 

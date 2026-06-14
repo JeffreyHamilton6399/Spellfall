@@ -27,19 +27,25 @@ export interface BotConfig {
 export type StatusEffect =
   | { type: "POISON"; damagePerRound: number; roundsLeft: number }
   | { type: "SHIELD"; roundsLeft: number }
-  | { type: "BLIND"; endsAt: number }    // timestamp: rack hidden until this
-  | { type: "BLIND_PENDING" }            // converts to BLIND at next round start
-  | { type: "LIFELEECH" }               // next submitted word triggers leech
-  | { type: "VENOM" }                   // next submitted word is venomous
-  | { type: "SNIPE_PENDING" };          // gives private letter at next round start
+  | { type: "BLIND"; endsAt: number }       // timestamp: rack hidden until this
+  | { type: "BLIND_PENDING" }               // converts to BLIND at next round start
+  | { type: "LIFELEECH" }                   // next submitted word triggers leech
+  | { type: "VENOM" }                       // next submitted word is venomous
+  | { type: "SNIPE_PENDING" }               // gives private letter at next round start
+  | { type: "DOUBLE_TAP" }                  // next submitted word deals double damage
+  | { type: "FREEZE"; endsAt: number }      // can't submit until timestamp
+  | { type: "FREEZE_PENDING" }              // converts to FREEZE at next round start
+  | { type: "REFLECT"; roundsLeft: number };// bounces incoming damage back to attacker
 
-export type VisibleStatusType = "POISONED" | "SHIELDED" | "BLINDED";
+export type VisibleStatusType = "POISONED" | "SHIELDED" | "BLINDED" | "FROZEN" | "REFLECTING";
 
 export function getVisibleStatuses(statuses: StatusEffect[]): VisibleStatusType[] {
   const out: VisibleStatusType[] = [];
   if (statuses.some((s) => s.type === "POISON")) out.push("POISONED");
   if (statuses.some((s) => s.type === "SHIELD")) out.push("SHIELDED");
   if (statuses.some((s) => s.type === "BLIND" || s.type === "BLIND_PENDING")) out.push("BLINDED");
+  if (statuses.some((s) => s.type === "FREEZE" || s.type === "FREEZE_PENDING")) out.push("FROZEN");
+  if (statuses.some((s) => s.type === "REFLECT")) out.push("REFLECTING");
   return out;
 }
 
@@ -90,6 +96,7 @@ export interface ScoredWord {
   isVenom: boolean;
   isLeech: boolean;
   leechHeal: number;
+  isDouble: boolean;
 }
 
 export interface PlayerRoundResult {
@@ -112,7 +119,7 @@ export interface RoundState {
   submittedWords: Record<string, string[]>;
   results: Record<string, PlayerRoundResult> | null;
   // Phase 3: per-word tags consumed at submission time
-  taggedWords: Record<string, Record<string, "venom" | "leech">>;
+  taggedWords: Record<string, Record<string, "venom" | "leech" | "double">>;
 }
 
 export interface KillEvent {

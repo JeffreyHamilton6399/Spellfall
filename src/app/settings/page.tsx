@@ -29,13 +29,17 @@ export default function SettingsPage() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(profile?.display_name ?? "");
   const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const saveName = async () => {
     if (!nameInput.trim()) return;
     setNameSaving(true);
+    setNameError(null);
     try {
       await updateDisplayName(nameInput);
       setEditingName(false);
+    } catch (e) {
+      setNameError(e instanceof Error ? e.message : "Failed to save — try again");
     } finally {
       setNameSaving(false);
     }
@@ -136,36 +140,44 @@ export default function SettingsPage() {
                         Display Name
                       </label>
                       {editingName ? (
-                        <div className="flex gap-2">
-                          <input
-                            value={nameInput}
-                            onChange={(e) =>
-                              setNameInput(
-                                e.target.value.replace(/[^a-zA-Z0-9_\s\-]/g, "").slice(0, 20)
-                              )
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveName();
-                              if (e.key === "Escape") setEditingName(false);
-                            }}
-                            autoFocus
-                            className="flex-1 bg-arena-800 border border-rim focus:border-rim-hi rounded-xl px-3 py-2 text-ink text-sm outline-none transition-colors"
-                          />
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={saveName}
-                            loading={nameSaving}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingName(false)}
-                          >
-                            Cancel
-                          </Button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <input
+                              value={nameInput}
+                              onChange={(e) => {
+                                setNameInput(
+                                  e.target.value.replace(/[^a-zA-Z0-9_\s\-]/g, "").slice(0, 20)
+                                );
+                                setNameError(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveName();
+                                if (e.key === "Escape") { setEditingName(false); setNameError(null); }
+                              }}
+                              autoFocus
+                              className={`flex-1 bg-arena-800 border rounded-xl px-3 py-2 text-ink text-sm outline-none transition-colors ${
+                                nameError ? "border-rose-500" : "border-rim focus:border-rim-hi"
+                              }`}
+                            />
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={saveName}
+                              loading={nameSaving}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setEditingName(false); setNameError(null); }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                          {nameError && (
+                            <p className="text-rose-400 text-xs">{nameError}</p>
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-3">

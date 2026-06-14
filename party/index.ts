@@ -53,6 +53,24 @@ async function fetchJwks(supabaseUrl: string): Promise<void> {
   } catch { /* network failure — keep stale cache */ }
 }
 
+// Fallback: verify token by calling Supabase REST API (handles HS256 tokens that have no kid)
+async function verifyTokenViaApi(
+  token: string,
+  supabaseUrl: string,
+  serviceKey: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { id?: string };
+    return data.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function verifySupabaseJWT(token: string, supabaseUrl: string): Promise<string | null> {
   try {
     const parts = token.split(".");
@@ -199,21 +217,36 @@ export default class SpellfallParty implements Party.Server {
     // Verify Supabase JWT if provided; gives a stable u_ prefix ID for logged-in users
     const token = url.searchParams.get("token");
     const supabaseUrl = this.room.env.SUPABASE_URL as string | undefined;
+    const serviceKey = this.room.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
     let verifiedUserId: string | null = null;
+
     if (token && supabaseUrl) {
+      // Try JWKS (RS256/ES256) first; falls back to REST API for HS256 tokens (no kid header)
       verifiedUserId = await verifySupabaseJWT(token, supabaseUrl);
+      if (!verifiedUserId && serviceKey) {
+        verifiedUserId = await verifyTokenViaApi(token, supabaseUrl, serviceKey);
+        if (verifiedUserId) {
+          console.log(`[auth] JWKS failed, REST API verified user ${verifiedUserId}`);
+        }
+      }
+      if (!verifiedUserId) {
+        console.warn(`[auth] token present but verification failed (JWKS + API both returned null)`);
+      }
     }
 
     // Ranked mode requires a verified account
-    if (this.isRanked && !verifiedUserId) {
-      const msg: ServerMsg = {
-        type: "ERROR",
-        code: "UNKNOWN",
-        message: "Ranked mode requires a signed-in account.",
-      };
-      conn.send(JSON.stringify(msg));
-      conn.close();
-      return;
+    if (this.isRanked) {
+      console.log(`[ranked] join: room=${this.room.id} token=${!!token} userId=${verifiedUserId ?? "null"}`);
+      if (!verifiedUserId) {
+        const msg: ServerMsg = {
+          type: "ERROR",
+          code: "UNKNOWN",
+          message: "Ranked mode requires a signed-in account.",
+        };
+        conn.send(JSON.stringify(msg));
+        conn.close();
+        return;
+      }
     }
 
     const playerId = verifiedUserId

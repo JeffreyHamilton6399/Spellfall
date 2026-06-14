@@ -67,14 +67,59 @@ export const ABILITIES: Record<string, AbilityDef> = {
     targeting: "player",
     trigger: "instant",
   },
+  double_tap: {
+    id: "double_tap",
+    name: "Double Tap",
+    description: "Next word hits twice.",
+    longDescription: "Your next word deals double damage to all targets.",
+    icon: "Zap",
+    targeting: "none",
+    trigger: "next-word",
+  },
+  energy_steal: {
+    id: "energy_steal",
+    name: "Steal",
+    description: "Drain a target's energy by 60%.",
+    longDescription: "Drain 60% of a target's energy and absorb a portion yourself.",
+    icon: "TrendingDown",
+    targeting: "player",
+    trigger: "instant",
+  },
+  freeze: {
+    id: "freeze",
+    name: "Freeze",
+    description: "Target can't submit for 5s next round.",
+    longDescription: "Target cannot submit words for the first 5s of the next round.",
+    icon: "Snowflake",
+    targeting: "player",
+    trigger: "instant",
+  },
+  cleanse: {
+    id: "cleanse",
+    name: "Cleanse",
+    description: "Remove debuffs + heal 20 HP.",
+    longDescription: "Remove all negative status effects and heal 20 HP.",
+    icon: "Wind",
+    targeting: "none",
+    trigger: "instant",
+  },
+  reflect: {
+    id: "reflect",
+    name: "Reflect",
+    description: "Bounce 35% of damage back for 1 round.",
+    longDescription: "For 1 round, 35% of incoming word damage is reflected back to attackers.",
+    icon: "ArrowLeftRight",
+    targeting: "none",
+    trigger: "instant",
+  },
 };
 
 export const ABILITY_IDS = Object.keys(ABILITIES);
 
 // Tier-based bot ability assignment
 export const BOT_ABILITY_POOL: Record<string, string[]> = {
-  novice:  ["letter_snipe", "word_shield"],
-  casual:  ["word_shield", "lifeleech"],
-  skilled: ["venom_word", "letter_snipe", "lifeleech"],
-  expert:  ["scramble", "blind", "venom_word"],
+  novice:  ["letter_snipe", "word_shield", "cleanse"],
+  casual:  ["word_shield", "lifeleech", "double_tap"],
+  skilled: ["venom_word", "letter_snipe", "lifeleech", "freeze"],
+  expert:  ["scramble", "blind", "venom_word", "reflect", "energy_steal"],
 };

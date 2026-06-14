@@ -97,7 +97,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateDisplayName = async (name: string) => {
     const clean = name.replace(/[^a-zA-Z0-9_\s\-]/g, "").trim().slice(0, 20);
     if (!clean || !session) return;
-    await supabase.from("profiles").update({ display_name: clean }).eq("id", session.user.id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: clean })
+      .eq("id", session.user.id);
+    if (error) throw new Error(error.message);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("spellfall_name", clean);
+    }
     await loadProfile(session.user.id);
   };
 
