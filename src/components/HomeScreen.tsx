@@ -82,7 +82,7 @@ export default function HomeScreen({ initialName }: Props) {
   /* ── Name entry screen ─────────────────────────────────────────────── */
   if (!nameSet) {
     return (
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-8 px-4 relative">
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-8 px-4 relative">
         <FloatingLetters />
         <div className="relative z-[1] flex flex-col items-center gap-8 w-full">
           <div className="text-center animate-slide-in-up" style={{ animationDelay: "0ms" }}>
@@ -123,7 +123,7 @@ export default function HomeScreen({ initialName }: Props) {
   return (
     <>
       <FloatingLetters />
-      <div className="min-h-dvh bg-arena-950 flex flex-col items-center justify-center gap-6 px-4 relative z-[1]">
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-6 px-4 relative z-[1]">
 
         {/* Top-right controls */}
         <div className="absolute top-4 right-4">

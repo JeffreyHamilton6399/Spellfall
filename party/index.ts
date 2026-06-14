@@ -356,7 +356,7 @@ export default class SpellfallParty implements Party.Server {
           type: "SUBMIT_WORD",
           playerId: session.playerId,
           word: msg.word,
-          timestamp: msg.timestamp,
+          timestamp: Date.now(), // always use server clock — client clock is untrusted
         });
         const after = this.engine.getState().round?.submittedWords[session.playerId]?.length ?? 0;
         if (after > before) this.broadcastWordCounts();

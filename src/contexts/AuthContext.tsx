@@ -96,16 +96,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateDisplayName = async (name: string) => {
     const clean = name.replace(/[^a-zA-Z0-9_\s\-]/g, "").trim().slice(0, 20);
+    console.log("[updateDisplayName] clean=", JSON.stringify(clean), "session=", !!session);
     if (!clean || !session) return;
+    // upsert handles missing profile rows (update silently no-ops when row absent)
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: clean })
-      .eq("id", session.user.id);
+      .upsert({ id: session.user.id, display_name: clean }, { onConflict: "id" });
+    console.log("[updateDisplayName] upsert error=", error?.message ?? "none");
     if (error) throw new Error(error.message);
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("spellfall_name", clean);
     }
     await loadProfile(session.user.id);
+    console.log("[updateDisplayName] done, profile reloaded");
   };
 
   return (
